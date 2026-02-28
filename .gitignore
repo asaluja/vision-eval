@@ -1,0 +1,15 @@
+# Virtual environment
+.venv/
+
+# Generated images (large, reproducible)
+generate/images/
+
+# Evaluation results (regenerable)
+results/*.jsonl
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
