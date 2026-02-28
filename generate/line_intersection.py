@@ -68,9 +68,9 @@ def generate(
 ) -> list[TaskInstance]:
     """Generate line intersection images with balanced 0/1/2 intersection counts."""
     if canvas_sizes is None:
-        canvas_sizes = [384, 768]
+        canvas_sizes = [512]  # low-signal: fixed
     if line_widths is None:
-        line_widths = [2.0, 4.0]
+        line_widths = [3.0]  # low-signal: fixed
 
     task_type = "line_intersection"
     prompt = get_prompt(task_type)

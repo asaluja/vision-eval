@@ -112,7 +112,7 @@ def generate(
     if game_types is None:
         game_types = ["chess", "go"]
     if image_sizes is None:
-        image_sizes = [384, 768]
+        image_sizes = [512]  # low-signal: fixed
 
     out = ensure_dir(os.path.join(output_dir, "board_games"))
     instances = []

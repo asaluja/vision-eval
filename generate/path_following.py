@@ -110,11 +110,11 @@ def generate(
 ) -> list[TaskInstance]:
     """Generate subway map path-following images."""
     if path_counts is None:
-        path_counts = [1, 2, 3, 4, 5]
+        path_counts = [1, 2, 3, 4, 5, 6]  # high-signal: expanded (more paths = harder)
     if canvas_sizes is None:
-        canvas_sizes = [512, 768]
+        canvas_sizes = [512]  # low-signal: fixed
     if line_widths is None:
-        line_widths = [3.0, 5.0]
+        line_widths = [4.0]  # low-signal: fixed
 
     task_type = "path_following"
     out = ensure_dir(os.path.join(output_dir, task_type))

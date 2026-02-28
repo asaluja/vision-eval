@@ -97,13 +97,13 @@ def generate(
     if counts is None:
         counts = [3, 4, 5, 6, 7, 8, 9, 10]
     if overlap_fracs is None:
-        overlap_fracs = [0.2, 0.4]
+        overlap_fracs = [0.1, 0.2, 0.3, 0.4, 0.5]  # high-signal: denser sweep
     if color_modes is None:
-        color_modes = ["mono", "multi"]
+        color_modes = ["mono"]  # low-signal: fixed (paper: "only change marginally")
     if canvas_sizes is None:
-        canvas_sizes = [384, 768]
+        canvas_sizes = [512]  # low-signal: fixed (paper: resolution invariant)
     if line_widths is None:
-        line_widths = [2.0, 3.0]
+        line_widths = [2.0]  # low-signal: fixed (paper: "does not influence ability")
 
     task_type = f"counting_{shape}s"
     shape_name = shape + "s"

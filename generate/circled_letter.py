@@ -70,9 +70,9 @@ def generate(
     if words is None:
         words = WORDS
     if font_sizes is None:
-        font_sizes = [40, 52]
+        font_sizes = [44]  # low-signal: fixed (paper: "font does not vary performance")
     if circle_thicknesses is None:
-        circle_thicknesses = [3, 5]
+        circle_thicknesses = [4]  # low-signal: fixed (analogous to line width)
 
     task_type = "circled_letter"
     prompt = get_prompt(task_type)

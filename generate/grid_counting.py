@@ -85,13 +85,14 @@ def generate(
 ) -> list[TaskInstance]:
     """Generate grid counting images."""
     if grid_sizes is None:
-        grid_sizes = [(r, c) for r in range(3, 12) for c in [r, r + 1]]
+        # high-signal: square and near-square grids across difficulty range
+        grid_sizes = [(r, c) for r in [3, 5, 7, 9, 11] for c in [r, r + 1]]
     if image_sizes is None:
-        image_sizes = [500, 1000]
+        image_sizes = [768]  # low-signal: fixed
     if line_widths is None:
-        line_widths = [2, 4]
+        line_widths = [3]  # low-signal: fixed
     if text_modes is None:
-        text_modes = [False, True]
+        text_modes = [False, True]  # HIGH-SIGNAL: text dramatically helps VLMs
 
     task_type = "grid_counting"
     prompt = get_prompt(task_type)

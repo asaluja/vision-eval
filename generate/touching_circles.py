@@ -22,7 +22,7 @@ def generate(
     distance_ratios: list[float] | None = None,
     arrangements: list[str] | None = None,
     canvas_sizes: list[int] | None = None,
-    radius_frac: float = 0.15,
+    radius_fracs: list[float] | None = None,
 ) -> list[TaskInstance]:
     """Generate two-circle images for overlap detection.
 
@@ -30,12 +30,14 @@ def generate(
       < 0 = overlapping, 0 = touching, > 0 = separated.
     """
     if distance_ratios is None:
-        # Negative = overlapping, 0 = touching, positive = separated
-        distance_ratios = [-0.3, -0.1, 0.0, 0.1, 0.3, 0.6]
+        # high-signal: denser near the touching boundary
+        distance_ratios = [-0.4, -0.2, -0.1, 0.0, 0.05, 0.1, 0.2, 0.4, 0.6]
     if arrangements is None:
-        arrangements = ["horizontal", "vertical", "diagonal"]
+        arrangements = ["horizontal"]  # low-signal: fixed
     if canvas_sizes is None:
-        canvas_sizes = [384, 768]
+        canvas_sizes = [512]  # low-signal: fixed
+    if radius_fracs is None:
+        radius_fracs = [0.1, 0.15, 0.2]  # high-signal: diameter affects difficulty
 
     task_type = "touching_circles"
     prompt = get_prompt(task_type)
@@ -43,64 +45,65 @@ def generate(
     instances = []
 
     for dist_r in distance_ratios:
-        for arr in arrangements:
-            for canvas in canvas_sizes:
-                for i in range(n_per_config):
-                    fname = f"touch_d{dist_r}_a{arr}_s{canvas}_{i}.png"
-                    fpath = os.path.join(out, fname)
+        for radius_frac in radius_fracs:
+            for arr in arrangements:
+                for canvas in canvas_sizes:
+                    for i in range(n_per_config):
+                        fname = f"touch_d{dist_r}_r{radius_frac}_a{arr}_s{canvas}_{i}.png"
+                        fpath = os.path.join(out, fname)
 
-                    radius = radius_frac
-                    # Center-to-center distance: 2*radius + gap
-                    gap = dist_r * (2 * radius)
-                    center_dist = 2 * radius + gap
+                        radius = radius_frac
+                        # Center-to-center distance: 2*radius + gap
+                        gap = dist_r * (2 * radius)
+                        center_dist = 2 * radius + gap
 
-                    # Place circle 1 at center, circle 2 offset by arrangement
-                    cx1, cy1 = 0.5, 0.5
-                    if arr == "horizontal":
-                        cx2 = cx1 + center_dist
-                        cy2 = cy1
-                    elif arr == "vertical":
-                        cx2 = cx1
-                        cy2 = cy1 + center_dist
-                    else:  # diagonal
-                        offset = center_dist / math.sqrt(2)
-                        cx2 = cx1 + offset
-                        cy2 = cy1 + offset
+                        # Place circle 1 at center, circle 2 offset by arrangement
+                        cx1, cy1 = 0.5, 0.5
+                        if arr == "horizontal":
+                            cx2 = cx1 + center_dist
+                            cy2 = cy1
+                        elif arr == "vertical":
+                            cx2 = cx1
+                            cy2 = cy1 + center_dist
+                        else:  # diagonal
+                            offset = center_dist / math.sqrt(2)
+                            cx2 = cx1 + offset
+                            cy2 = cy1 + offset
 
-                    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
-                    ax.set_xlim(0, 1)
-                    ax.set_ylim(0, 1)
-                    ax.set_aspect("equal")
-                    ax.axis("off")
-                    fig.patch.set_facecolor("white")
+                        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+                        ax.set_xlim(0, 1)
+                        ax.set_ylim(0, 1)
+                        ax.set_aspect("equal")
+                        ax.axis("off")
+                        fig.patch.set_facecolor("white")
 
-                    c1 = patches.Circle((cx1, cy1), radius, fill=False,
-                                        edgecolor="#1f77b4", linewidth=2.5)
-                    c2 = patches.Circle((cx2, cy2), radius, fill=False,
-                                        edgecolor="#d62728", linewidth=2.5)
-                    ax.add_patch(c1)
-                    ax.add_patch(c2)
+                        c1 = patches.Circle((cx1, cy1), radius, fill=False,
+                                            edgecolor="#1f77b4", linewidth=2.5)
+                        c2 = patches.Circle((cx2, cy2), radius, fill=False,
+                                            edgecolor="#d62728", linewidth=2.5)
+                        ax.add_patch(c1)
+                        ax.add_patch(c2)
 
-                    dpi = max(100, canvas // 5)
-                    fig.savefig(fpath, dpi=dpi, bbox_inches="tight", pad_inches=0.05)
-                    plt.close(fig)
+                        dpi = max(100, canvas // 5)
+                        fig.savefig(fpath, dpi=dpi, bbox_inches="tight", pad_inches=0.05)
+                        plt.close(fig)
 
-                    # Touching or overlapping if gap <= 0
-                    ground_truth = "Yes" if dist_r <= 0 else "No"
+                        # Touching or overlapping if gap <= 0
+                        ground_truth = "Yes" if dist_r <= 0 else "No"
 
-                    instances.append(TaskInstance(
-                        image_path=os.path.abspath(fpath),
-                        prompt=prompt,
-                        ground_truth=ground_truth,
-                        task_type=task_type,
-                        subtask=f"dist={dist_r}",
-                        metadata={
-                            "distance_ratio": dist_r, "arrangement": arr,
-                            "canvas_size": canvas, "radius": radius,
-                            "actual_state": "overlapping" if dist_r < 0 else
-                                           "touching" if dist_r == 0 else "separated",
-                        },
-                    ))
+                        instances.append(TaskInstance(
+                            image_path=os.path.abspath(fpath),
+                            prompt=prompt,
+                            ground_truth=ground_truth,
+                            task_type=task_type,
+                            subtask=f"dist={dist_r}",
+                            metadata={
+                                "distance_ratio": dist_r, "arrangement": arr,
+                                "canvas_size": canvas, "radius": radius,
+                                "actual_state": "overlapping" if dist_r < 0 else
+                                               "touching" if dist_r == 0 else "separated",
+                            },
+                        ))
 
     return instances
 

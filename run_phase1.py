@@ -78,7 +78,7 @@ def main():
     parser.add_argument("--tasks", nargs="+", default=None,
                         choices=list(TASK_REGISTRY.keys()),
                         help="Tasks to run (default: all)")
-    parser.add_argument("--n", type=int, default=2,
+    parser.add_argument("--n", type=int, default=3,
                         help="Number of samples per configuration")
     parser.add_argument("--generate-only", action="store_true",
                         help="Only generate images, skip evaluation")

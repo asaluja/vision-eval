@@ -51,11 +51,11 @@ def generate(
 ) -> list[TaskInstance]:
     """Generate nested square images."""
     if depths is None:
-        depths = [2, 3, 4, 5]
+        depths = [2, 3, 4, 5, 6, 7]  # high-signal: expanded range
     if line_thicknesses is None:
-        line_thicknesses = [2.0, 3.0]
+        line_thicknesses = [2.0]  # low-signal: fixed
     if canvas_sizes is None:
-        canvas_sizes = [384, 768]
+        canvas_sizes = [512]  # low-signal: fixed
 
     task_type = "nested_squares"
     prompt = get_prompt(task_type)

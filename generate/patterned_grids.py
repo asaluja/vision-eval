@@ -120,7 +120,7 @@ def generate(
     if grid_sizes is None:
         grid_sizes = [6, 8, 10]
     if image_sizes is None:
-        image_sizes = [768, 1152]
+        image_sizes = [768]  # low-signal: fixed
     if grid_types is None:
         grid_types = ["dice", "tally"]
     if anomaly_types is None:
