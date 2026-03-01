@@ -11,7 +11,7 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 import matplotlib.font_manager as fm
 
-from generate.base import TaskInstance, ensure_dir
+from generate.base import TaskInstance, ensure_dir, make_instances
 from evaluate.prompts import get_prompt
 
 
@@ -67,6 +67,9 @@ def generate(
     circle_thicknesses: list[int] | None = None,
 ) -> list[TaskInstance]:
     """Generate images with one letter circled in red."""
+    # Deterministic generator — replicates produce identical images, so cap at 1
+    n_per_config = 1
+
     if words is None:
         words = WORDS
     if font_sizes is None:
@@ -75,7 +78,6 @@ def generate(
         circle_thicknesses = [4]  # low-signal: fixed (analogous to line width)
 
     task_type = "circled_letter"
-    prompt = get_prompt(task_type)
     out = ensure_dir(os.path.join(output_dir, task_type))
     instances = []
 
@@ -127,11 +129,8 @@ def generate(
                         img.save(fpath)
 
                         target_letter = word[target_idx]
-                        instances.append(TaskInstance(
-                            image_path=os.path.abspath(fpath),
-                            prompt=prompt,
-                            ground_truth=target_letter.upper(),
-                            task_type=task_type,
+                        instances.extend(make_instances(
+                            fpath, task_type, target_letter.upper(),
                             subtask=f"word={word[:8]}",
                             metadata={
                                 "word": word, "target_index": target_idx,

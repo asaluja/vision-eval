@@ -102,10 +102,19 @@ def main():
     # ── Sidebar filters ──
     st.sidebar.header("Filters")
 
-    task_types = ["All"] + sorted(df["task_type"].unique().tolist())
+    # Data source filter (synthetic vs benchmark)
+    if "meta_source" in df.columns:
+        df["meta_source"] = df["meta_source"].fillna("synthetic")
+    else:
+        df["meta_source"] = "synthetic"
+    sources = ["All"] + sorted(df["meta_source"].unique().tolist())
+    selected_source = st.sidebar.selectbox("Data source", sources)
+    filtered = df if selected_source == "All" else df[df["meta_source"] == selected_source]
+
+    task_types = ["All"] + sorted(filtered["task_type"].unique().tolist())
     selected_task = st.sidebar.selectbox("Task type", task_types)
 
-    filtered = df if selected_task == "All" else df[df["task_type"] == selected_task]
+    filtered = filtered if selected_task == "All" else filtered[filtered["task_type"] == selected_task]
 
     subtasks = ["All"] + sorted(filtered["subtask"].dropna().unique().tolist())
     selected_subtask = st.sidebar.selectbox("Subtask", subtasks)

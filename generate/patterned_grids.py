@@ -16,7 +16,7 @@ import random
 from PIL import Image, ImageDraw, ImageFont
 import matplotlib.font_manager as fm
 
-from generate.base import TaskInstance, ensure_dir
+from generate.base import TaskInstance, ensure_dir, make_instances
 from evaluate.prompts import get_prompt
 
 
@@ -208,12 +208,8 @@ def generate(
                         shape_name = "circles" if gtype == "dice" else "lines"
                         actual_count = count  # post-anomaly
 
-                        prompt = get_prompt(task_type, shape_name=shape_name, cell_id=cell_id)
-                        instances.append(TaskInstance(
-                            image_path=os.path.abspath(fpath),
-                            prompt=prompt,
-                            ground_truth=actual_count,
-                            task_type=task_type,
+                        instances.extend(make_instances(
+                            fpath, task_type, actual_count,
                             subtask=f"{gtype}_{anomaly}",
                             metadata={
                                 "grid_type": gtype, "anomaly_type": anomaly,
@@ -223,6 +219,7 @@ def generate(
                                 "actual_count": actual_count,
                                 "expected_bias": canonical_count,
                             },
+                            shape_name=shape_name, cell_id=cell_id,
                         ))
 
     return instances

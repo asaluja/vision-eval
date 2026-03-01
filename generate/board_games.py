@@ -11,7 +11,7 @@ import os
 
 from PIL import Image, ImageDraw
 
-from generate.base import TaskInstance, ensure_dir
+from generate.base import TaskInstance, ensure_dir, make_instances
 from evaluate.prompts import get_prompt
 
 # Standard board game colors
@@ -109,6 +109,9 @@ def generate(
     include_canonical: bool = True,
 ) -> list[TaskInstance]:
     """Generate board game images with standard and modified dimensions."""
+    # Deterministic generator — replicates produce identical images, so cap at 1
+    n_per_config = 1
+
     if game_types is None:
         game_types = ["chess", "go"]
     if image_sizes is None:
@@ -136,12 +139,8 @@ def generate(
                     draw_fn(rows, cols, img_size, fpath)
 
                     # Row-counting question
-                    prompt_r = get_prompt("board_game_rows", game_type=game)
-                    instances.append(TaskInstance(
-                        image_path=os.path.abspath(fpath),
-                        prompt=prompt_r,
-                        ground_truth=rows,
-                        task_type="board_game_rows",
+                    instances.extend(make_instances(
+                        fpath, "board_game_rows", rows,
                         subtask=f"{game}_{rows}x{cols}",
                         metadata={
                             "game_type": game, "rows": rows, "cols": cols,
@@ -150,15 +149,12 @@ def generate(
                             "expected_bias": canon_r,
                             "is_canonical": (rows, cols) == (canon_r, canon_c),
                         },
+                        game_type=game,
                     ))
 
                     # Column-counting question
-                    prompt_c = get_prompt("board_game_cols", game_type=game)
-                    instances.append(TaskInstance(
-                        image_path=os.path.abspath(fpath),
-                        prompt=prompt_c,
-                        ground_truth=cols,
-                        task_type="board_game_cols",
+                    instances.extend(make_instances(
+                        fpath, "board_game_cols", cols,
                         subtask=f"{game}_{rows}x{cols}",
                         metadata={
                             "game_type": game, "rows": rows, "cols": cols,
@@ -167,6 +163,7 @@ def generate(
                             "expected_bias": canon_c,
                             "is_canonical": (rows, cols) == (canon_r, canon_c),
                         },
+                        game_type=game,
                     ))
 
     return instances

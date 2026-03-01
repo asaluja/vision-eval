@@ -13,7 +13,7 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 
-from generate.base import TaskInstance, ensure_dir
+from generate.base import TaskInstance, ensure_dir, make_instances
 from evaluate.prompts import get_prompt
 
 
@@ -73,7 +73,6 @@ def generate(
         line_widths = [3.0]  # low-signal: fixed
 
     task_type = "line_intersection"
-    prompt = get_prompt(task_type)
     out = ensure_dir(os.path.join(output_dir, task_type))
 
     # Pre-generate line pairs balanced across intersection counts
@@ -115,11 +114,8 @@ def generate(
                     fig.savefig(fpath, dpi=dpi, bbox_inches="tight", pad_inches=0.05)
                     plt.close(fig)
 
-                    instances.append(TaskInstance(
-                        image_path=os.path.abspath(fpath),
-                        prompt=prompt,
-                        ground_truth=n_int,
-                        task_type=task_type,
+                    instances.extend(make_instances(
+                        fpath, task_type, n_int,
                         subtask=f"intersections={n_int}",
                         metadata={
                             "n_intersections": n_int, "canvas_size": canvas,

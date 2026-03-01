@@ -71,30 +71,74 @@ def extract_row_col(response: str) -> tuple[int, int] | None:
     return None
 
 
-def score_instance(task_type: str, ground_truth: Any, response: str) -> dict:
-    """Score a single response. Returns dict with extracted answer, correctness, etc."""
+def extract_text_answer(response: str) -> str | None:
+    """Extract a text answer from curly braces, e.g. {January} -> January."""
+    m = re.search(r"\{([^{}]+)\}", response)
+    if m:
+        return m.group(1).strip()
+    # Fallback: return first line stripped (often the model just says the answer)
+    first_line = response.strip().split("\n")[0].strip()
+    if first_line and len(first_line) < 50:
+        return first_line
+    return None
+
+
+def extract_trend(response: str) -> str | None:
+    """Extract increasing/decreasing from response."""
+    text = response.lower()
+    # Try braces first
+    m = re.search(r"\{(increasing|decreasing)\}", text)
+    if m:
+        return m.group(1)
+    if "increasing" in text and "decreasing" not in text:
+        return "increasing"
+    if "decreasing" in text and "increasing" not in text:
+        return "decreasing"
+    # Both present — take the one in braces or first occurrence
+    if "increasing" in text:
+        return "increasing"
+    if "decreasing" in text:
+        return "decreasing"
+    return None
+
+
+def score_instance(task_type: str, ground_truth: Any, response: str, metadata: dict | None = None) -> dict:
+    """Score a single response. Returns dict with extracted answer, correctness, etc.
+
+    If metadata contains 'expected_bias', also checks whether the model's error
+    is bias-aligned (gave the memorized canonical answer instead of the correct one).
+    """
     result = {"ground_truth": ground_truth, "response": response, "extracted": None, "correct": False}
 
+    # Numeric tasks
     if task_type in ("counting_circles", "counting_pentagons", "line_intersection",
                      "nested_squares", "path_following", "patterned_grid",
-                     "board_game_rows", "board_game_cols"):
+                     "board_game_rows", "board_game_cols", "board_game",
+                     "chart_bar_value", "chart_bar_count", "chart_grouped_value",
+                     "chart_line_value", "chart_line_count",
+                     "table_cell_lookup", "table_row_count",
+                     "diagram_node_count",
+                     "text_number_reading"):
         extracted = extract_number(response)
         result["extracted"] = extracted
         if extracted is not None:
             result["correct"] = (extracted == int(ground_truth))
 
-    elif task_type == "touching_circles":
+    # Yes/No tasks
+    elif task_type in ("touching_circles", "optical_illusion"):
         extracted = extract_yes_no(response)
         result["extracted"] = extracted
         if extracted is not None:
-            result["correct"] = (extracted == str(ground_truth))
+            result["correct"] = (extracted.lower() == str(ground_truth).lower())
 
+    # Letter tasks
     elif task_type == "circled_letter":
         extracted = extract_letter(response)
         result["extracted"] = extracted
         if extracted is not None:
             result["correct"] = (extracted.upper() == str(ground_truth).upper())
 
+    # Grid tasks
     elif task_type == "grid_counting":
         extracted = extract_row_col(response)
         result["extracted"] = extracted
@@ -107,4 +151,41 @@ def score_instance(task_type: str, ground_truth: Any, response: str) -> dict:
                 gt = tuple(gt)
             result["correct"] = (extracted == gt)
 
+    # Trend tasks (increasing/decreasing)
+    elif task_type == "chart_line_trend":
+        extracted = extract_trend(response)
+        result["extracted"] = extracted
+        if extracted is not None:
+            result["correct"] = (extracted.lower() == str(ground_truth).lower())
+
+    # Text-answer tasks (category names, step names, etc.)
+    elif task_type in ("chart_bar_compare", "table_max",
+                       "diagram_next_step", "diagram_decision",
+                       "text_word_reading", "color_grid_odd"):
+        extracted = extract_text_answer(response)
+        result["extracted"] = extracted
+        if extracted is not None:
+            result["correct"] = (extracted.lower().strip() == str(ground_truth).lower().strip())
+
+    # Fallback: generic string match
+    else:
+        extracted = _extract_bracketed_or_full(response)
+        result["extracted"] = extracted
+        if extracted is not None:
+            result["correct"] = (extracted.lower().strip() == str(ground_truth).lower().strip())
+
+    # Bias alignment check (for DPO data)
+    if metadata and "expected_bias" in metadata and not result["correct"]:
+        expected_bias = str(metadata["expected_bias"]).lower().strip()
+        extracted_str = str(result["extracted"]).lower().strip() if result["extracted"] is not None else ""
+        result["bias_aligned"] = (extracted_str == expected_bias)
+
     return result
+
+
+def _extract_bracketed_or_full(response: str) -> str | None:
+    """Extract {bracketed} answer or return stripped response."""
+    m = re.search(r"\{([^}]+)\}", response)
+    if m:
+        return m.group(1).strip()
+    return response.strip() if response.strip() else None

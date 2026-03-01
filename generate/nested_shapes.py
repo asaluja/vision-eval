@@ -11,7 +11,7 @@ import random
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
-from generate.base import TaskInstance, ensure_dir
+from generate.base import TaskInstance, ensure_dir, make_instances
 from evaluate.prompts import get_prompt
 
 
@@ -58,7 +58,6 @@ def generate(
         canvas_sizes = [512]  # low-signal: fixed
 
     task_type = "nested_squares"
-    prompt = get_prompt(task_type)
     out = ensure_dir(os.path.join(output_dir, task_type))
     instances = []
 
@@ -82,11 +81,8 @@ def generate(
                     fig.savefig(fpath, dpi=dpi, bbox_inches="tight", pad_inches=0.05)
                     plt.close(fig)
 
-                    instances.append(TaskInstance(
-                        image_path=os.path.abspath(fpath),
-                        prompt=prompt,
-                        ground_truth=depth,
-                        task_type=task_type,
+                    instances.extend(make_instances(
+                        fpath, task_type, depth,
                         subtask=f"depth={depth}",
                         metadata={
                             "depth": depth, "line_thickness": lt,

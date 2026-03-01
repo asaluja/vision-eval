@@ -35,9 +35,17 @@ def query_model(
     image_path: str,
     prompt: str,
     system: str | None = None,
+    thinking: bool = False,
+    thinking_budget: int = 4096,
     max_retries: int = 3,
 ) -> str:
-    """Send an image + prompt to Haiku 4.5 and return the text response."""
+    """Send an image + prompt to Haiku 4.5 and return the text response.
+
+    Args:
+        thinking: Enable extended thinking. When True, the model reasons
+                  step-by-step before answering (may improve counting/spatial tasks).
+        thinking_budget: Max tokens for the thinking phase (not counted in max_tokens).
+    """
     client = get_client()
     img_data, media_type = encode_image(image_path)
 
@@ -64,11 +72,26 @@ def query_model(
                 model=config.MODEL_ID,
                 max_tokens=config.MAX_TOKENS,
                 messages=messages,
+                temperature=0,
             )
             if system:
                 kwargs["system"] = system
+            if thinking:
+                # temperature must be 1 for extended thinking
+                kwargs.pop("temperature")
+                kwargs["thinking"] = {
+                    "type": "enabled",
+                    "budget_tokens": thinking_budget,
+                }
+                # thinking requires max_tokens to cover both thinking + response
+                kwargs["max_tokens"] = thinking_budget + config.MAX_TOKENS
             response = client.messages.create(**kwargs)
-            return response.content[0].text
+            # With thinking enabled, response has multiple blocks —
+            # extract the text block (skip thinking blocks)
+            for block in response.content:
+                if block.type == "text":
+                    return block.text
+            return response.content[-1].text
         except anthropic.RateLimitError:
             wait = 2 ** attempt
             time.sleep(wait)

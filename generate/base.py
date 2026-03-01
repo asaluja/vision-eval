@@ -1,5 +1,7 @@
 """Common types and utilities for image generators."""
 
+from __future__ import annotations
+
 import json
 import os
 from dataclasses import dataclass, field, asdict
@@ -39,3 +41,48 @@ def ensure_dir(path: str) -> str:
     """Create directory if needed, return path."""
     os.makedirs(path, exist_ok=True)
     return path
+
+
+def make_instances(
+    image_path: str,
+    task_type: str,
+    ground_truth: Any,
+    subtask: str = "",
+    metadata: dict | None = None,
+    **prompt_kwargs,
+) -> list[TaskInstance]:
+    """Create one TaskInstance per prompt variant for a given task.
+
+    Returns a list with one entry per variant defined in PROMPTS[task_type].
+    Each instance is identical except for the prompt text and a
+    'prompt_variant' key in metadata (0, 1, 2, ...).
+
+    Usage:
+        instances.extend(make_instances(
+            fpath, "chart_bar_value", 42,
+            subtask="bar_n5", metadata={...}, category="Jan",
+        ))
+    """
+    from evaluate.prompts import PROMPTS
+
+    templates = PROMPTS.get(task_type, [])
+    if not templates:
+        raise ValueError(f"No prompts registered for task_type={task_type!r}")
+
+    abs_path = os.path.abspath(image_path)
+    meta = dict(metadata or {})
+    results = []
+
+    for variant_idx, template in enumerate(templates):
+        prompt = template.format(**prompt_kwargs) if prompt_kwargs else template
+        inst_meta = dict(meta, prompt_variant=variant_idx)
+        results.append(TaskInstance(
+            image_path=abs_path,
+            prompt=prompt,
+            ground_truth=ground_truth,
+            task_type=task_type,
+            subtask=subtask,
+            metadata=inst_meta,
+        ))
+
+    return results

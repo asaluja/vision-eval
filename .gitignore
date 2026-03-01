@@ -11,5 +11,9 @@ results/*.jsonl
 __pycache__/
 *.pyc
 
+# HF dataset cache and downloaded images
+data/cache/
+data/images/
+
 # OS
 .DS_Store

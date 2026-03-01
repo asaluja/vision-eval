@@ -12,7 +12,7 @@ import os
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
-from generate.base import TaskInstance, ensure_dir
+from generate.base import TaskInstance, ensure_dir, make_instances
 from evaluate.prompts import get_prompt
 
 
@@ -40,7 +40,6 @@ def generate(
         radius_fracs = [0.1, 0.15, 0.2]  # high-signal: diameter affects difficulty
 
     task_type = "touching_circles"
-    prompt = get_prompt(task_type)
     out = ensure_dir(os.path.join(output_dir, task_type))
     instances = []
 
@@ -91,11 +90,8 @@ def generate(
                         # Touching or overlapping if gap <= 0
                         ground_truth = "Yes" if dist_r <= 0 else "No"
 
-                        instances.append(TaskInstance(
-                            image_path=os.path.abspath(fpath),
-                            prompt=prompt,
-                            ground_truth=ground_truth,
-                            task_type=task_type,
+                        instances.extend(make_instances(
+                            fpath, task_type, ground_truth,
                             subtask=f"dist={dist_r}",
                             metadata={
                                 "distance_ratio": dist_r, "arrangement": arr,

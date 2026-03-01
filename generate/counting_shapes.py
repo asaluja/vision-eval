@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
 
-from generate.base import TaskInstance, ensure_dir
+from generate.base import TaskInstance, ensure_dir, make_instances
 from evaluate.prompts import get_prompt
 
 
@@ -106,8 +106,6 @@ def generate(
         line_widths = [2.0]  # low-signal: fixed (paper: "does not influence ability")
 
     task_type = f"counting_{shape}s"
-    shape_name = shape + "s"
-    prompt = get_prompt(task_type)
     out = ensure_dir(os.path.join(output_dir, task_type))
     instances = []
 
@@ -127,11 +125,8 @@ def generate(
 
                             _draw_shapes(centers, radius, shape, lw, colors, canvas, fpath)
 
-                            instances.append(TaskInstance(
-                                image_path=os.path.abspath(fpath),
-                                prompt=prompt,
-                                ground_truth=count,
-                                task_type=task_type,
+                            instances.extend(make_instances(
+                                fpath, task_type, count,
                                 subtask=f"n={count}",
                                 metadata={
                                     "count": count, "overlap_frac": overlap,

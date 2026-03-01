@@ -31,28 +31,38 @@ def _load_completed(results_path: str) -> set[str]:
     return done
 
 
-def _eval_one(inst: TaskInstance) -> dict:
-    """Evaluate a single instance. Thread-safe (no shared mutable state)."""
-    try:
-        response = query_model(inst.image_path, inst.prompt, system=SYSTEM_PROMPT)
-    except Exception as e:
-        response = f"ERROR: {e}"
+def _make_eval_fn(thinking: bool = False, thinking_budget: int = 4096):
+    """Return an eval function with thinking config baked in (for thread pool)."""
+    def _eval_one(inst: TaskInstance) -> dict:
+        try:
+            response = query_model(
+                inst.image_path, inst.prompt,
+                system=SYSTEM_PROMPT,
+                thinking=thinking,
+                thinking_budget=thinking_budget,
+            )
+        except Exception as e:
+            response = f"ERROR: {e}"
 
-    scored = score_instance(inst.task_type, inst.ground_truth, response)
-    return {
-        "task_type": inst.task_type,
-        "subtask": inst.subtask,
-        "image_path": inst.image_path,
-        "prompt": inst.prompt,
-        **scored,
-        "metadata": inst.metadata,
-    }
+        scored = score_instance(inst.task_type, inst.ground_truth, response, metadata=inst.metadata)
+        return {
+            "task_type": inst.task_type,
+            "subtask": inst.subtask,
+            "image_path": inst.image_path,
+            "prompt": inst.prompt,
+            "thinking_enabled": thinking,
+            **scored,
+            "metadata": inst.metadata,
+        }
+    return _eval_one
 
 
 def run_evaluation(
     instances: list[TaskInstance],
     results_path: str,
     max_workers: int = 10,
+    thinking: bool = False,
+    thinking_budget: int = 4096,
 ) -> list[dict]:
     """Evaluate a list of TaskInstances against Haiku 4.5.
 
@@ -60,6 +70,8 @@ def run_evaluation(
         instances: Generated task instances to evaluate.
         results_path: Path to JSONL file for results (append mode, supports resume).
         max_workers: Number of concurrent API calls.
+        thinking: Enable extended thinking for step-by-step reasoning.
+        thinking_budget: Max tokens for the thinking phase.
 
     Returns:
         List of result dicts.
@@ -79,10 +91,11 @@ def run_evaluation(
 
     results = []
     write_lock = threading.Lock()
+    eval_fn = _make_eval_fn(thinking=thinking, thinking_budget=thinking_budget)
 
     with open(results_path, "a") as f:
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
-            futures = {pool.submit(_eval_one, inst): inst for inst in pending}
+            futures = {pool.submit(eval_fn, inst): inst for inst in pending}
 
             for future in tqdm(as_completed(futures), total=len(futures), desc="Evaluating"):
                 result = future.result()

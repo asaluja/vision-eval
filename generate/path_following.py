@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
 
-from generate.base import TaskInstance, ensure_dir
+from generate.base import TaskInstance, ensure_dir, make_instances
 from evaluate.prompts import get_prompt
 
 # Station positions (on an 18x18 canvas)
@@ -167,18 +167,14 @@ def generate(
                     fig.savefig(fpath, dpi=dpi, bbox_inches="tight", pad_inches=0.1)
                     plt.close(fig)
 
-                    prompt = get_prompt(task_type, start=start_label, end=end_label)
-                    instances.append(TaskInstance(
-                        image_path=os.path.abspath(fpath),
-                        prompt=prompt,
-                        ground_truth=n_paths,
-                        task_type=task_type,
+                    instances.extend(make_instances(
+                        fpath, task_type, n_paths,
                         subtask=f"n_paths={n_paths}",
                         metadata={
                             "n_paths": n_paths, "canvas_size": canvas,
-                            "line_width": lw, "start": start_label,
-                            "end": end_label,
+                            "line_width": lw,
                         },
+                        start=start_label, end=end_label,
                     ))
 
     return instances

@@ -12,7 +12,7 @@ import random
 from PIL import Image, ImageDraw, ImageFont
 import matplotlib.font_manager as fm
 
-from generate.base import TaskInstance, ensure_dir
+from generate.base import TaskInstance, ensure_dir, make_instances
 from evaluate.prompts import get_prompt
 
 WORD_LIST = [
@@ -95,7 +95,6 @@ def generate(
         text_modes = [False, True]  # HIGH-SIGNAL: text dramatically helps VLMs
 
     task_type = "grid_counting"
-    prompt = get_prompt(task_type)
     out = ensure_dir(os.path.join(output_dir, task_type))
     instances = []
 
@@ -111,11 +110,8 @@ def generate(
                         _draw_grid(rows, cols, img_size, lw, with_text, fpath)
 
                         gt = f"{rows}, {cols}"
-                        instances.append(TaskInstance(
-                            image_path=os.path.abspath(fpath),
-                            prompt=prompt,
-                            ground_truth=gt,
-                            task_type=task_type,
+                        instances.extend(make_instances(
+                            fpath, task_type, gt,
                             subtask=f"{rows}x{cols}_{text_tag}",
                             metadata={
                                 "rows": rows, "cols": cols, "image_size": img_size,

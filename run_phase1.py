@@ -30,6 +30,14 @@ TASK_REGISTRY = {
     # VLMs Are Biased
     "patterned_grid": ("generate.patterned_grids", {}),
     "board_games": ("generate.board_games", {}),
+    # Business-critical
+    "chart": ("generate.charts", {}),
+    "table": ("generate.tables", {}),
+    "diagram": ("generate.diagrams", {}),
+    # Gap-filling primitives
+    "relative_comparison": ("generate.relative_comparison", {}),
+    "color_discrimination": ("generate.color_discrimination", {}),
+    "text_reading": ("generate.text_reading", {}),
 }
 
 
@@ -86,6 +94,10 @@ def main():
                         help="Only evaluate (load existing instances)")
     parser.add_argument("--workers", type=int, default=10,
                         help="Number of concurrent API calls (default: 10)")
+    parser.add_argument("--thinking", action="store_true",
+                        help="Enable extended thinking (step-by-step reasoning)")
+    parser.add_argument("--thinking-budget", type=int, default=4096,
+                        help="Max tokens for thinking phase (default: 4096)")
     args = parser.parse_args()
 
     tasks = args.tasks or list(TASK_REGISTRY.keys())
@@ -110,8 +122,12 @@ def main():
     # Run evaluation
     all_results = []
     for task_name, instances in all_instances.items():
-        results_path = os.path.join(config.RESULTS_DIR, f"{task_name}_results.jsonl")
-        results = run_evaluation(instances, results_path, max_workers=args.workers)
+        suffix = "_thinking" if args.thinking else ""
+        results_path = os.path.join(config.RESULTS_DIR, f"{task_name}_results{suffix}.jsonl")
+        results = run_evaluation(
+            instances, results_path, max_workers=args.workers,
+            thinking=args.thinking, thinking_budget=args.thinking_budget,
+        )
         all_results.extend(results)
 
     print_summary(all_results)
