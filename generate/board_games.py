@@ -12,7 +12,6 @@ import os
 from PIL import Image, ImageDraw
 
 from generate.base import TaskInstance, ensure_dir, make_instances
-from evaluate.prompts import get_prompt
 
 # Standard board game colors
 CHESS_LIGHT = "#f0d9b5"

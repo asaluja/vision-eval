@@ -9,22 +9,8 @@ from __future__ import annotations
 import os
 
 from PIL import Image, ImageDraw, ImageFont
-import matplotlib.font_manager as fm
 
-from generate.base import TaskInstance, ensure_dir, make_instances
-from evaluate.prompts import get_prompt
-
-
-def _get_font(size: int) -> ImageFont.FreeTypeFont:
-    """Get a reliable font. Try DejaVu Sans (ships with matplotlib), fallback to system."""
-    try:
-        path = fm.findfont("DejaVu Sans")
-        return ImageFont.truetype(path, size)
-    except Exception:
-        try:
-            return ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", size)
-        except Exception:
-            return ImageFont.load_default()
+from generate.base import TaskInstance, ensure_dir, make_instances, _get_font
 
 
 def _char_bboxes(word: str, font: ImageFont.FreeTypeFont):

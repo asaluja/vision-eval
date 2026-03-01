@@ -24,15 +24,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from generate.base import TaskInstance, ensure_dir, make_instances
-
-COLORS = list(matplotlib.cm.tab10.colors[:10])
-
-CATEGORY_POOLS = [
-    ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"],
-    ["Product A", "Product B", "Product C", "Product D",
-     "Product E", "Product F", "Product G", "Product H"],
-    ["North", "South", "East", "West", "Central", "Coastal"],
-]
+from generate.chart_common import COLORS, CATEGORY_POOLS
 
 SERIES_PAIRS = [
     ("Revenue", "Cost"),

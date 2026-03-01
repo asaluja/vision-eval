@@ -137,6 +137,17 @@ Generated results are slightly lower than HF, possibly due to denser grids and m
 
 ---
 
+## Extended Thinking Experiment
+
+Re-ran both board games and patterned grid with extended thinking (`--thinking --thinking-budget 2048`) to test whether step-by-step reasoning helps override memorized priors.
+
+| Task | Baseline | Thinking | Delta |
+|------|----------|----------|-------|
+| Patterned grid | 15.5% | 17.1% | +1.6pp |
+| Board games | 60.0% | 59.5% | -0.5pp |
+
+**Extended thinking makes no difference.** Add-anomalies remain at 0%, canonical dimensions remain at 100%, and off-by-one board dimensions remain at 50%. The model cannot think its way out of a perception failure — if the visual representation doesn't encode the deviation from the memorized default, no amount of reasoning will recover it. This confirms the bias override failure is **perceptual, not reasoning-based**.
+
 ## Cross-Task Patterns
 
 1. **Memorized priors completely dominate visual evidence for board games.** 100% bias alignment with zero variance across 400 evaluations means the model doesn't engage its vision system at all for this task — it pattern-matches "chess board" → 8×8 and "go board" → 19×19 without counting.

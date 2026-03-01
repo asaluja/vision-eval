@@ -10,10 +10,8 @@ import os
 import random
 
 from PIL import Image, ImageDraw, ImageFont
-import matplotlib.font_manager as fm
 
-from generate.base import TaskInstance, ensure_dir, make_instances
-from evaluate.prompts import get_prompt
+from generate.base import TaskInstance, ensure_dir, make_instances, _get_font
 
 WORD_LIST = [
     "apple", "brick", "crane", "delta", "eagle", "flame", "grape", "house",
@@ -22,14 +20,6 @@ WORD_LIST = [
     "yacht", "zebra", "bloom", "clash", "drift", "frost", "globe", "haste",
     "inbox", "jewel", "knack", "lunar", "minor", "noble", "orbit", "plume",
 ]
-
-
-def _get_font(size: int) -> ImageFont.FreeTypeFont:
-    try:
-        path = fm.findfont("DejaVu Sans")
-        return ImageFont.truetype(path, size)
-    except Exception:
-        return ImageFont.load_default()
 
 
 def _draw_grid(

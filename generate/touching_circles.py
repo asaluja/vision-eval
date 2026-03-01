@@ -13,7 +13,6 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 from generate.base import TaskInstance, ensure_dir, make_instances
-from evaluate.prompts import get_prompt
 
 
 def generate(

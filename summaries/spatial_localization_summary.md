@@ -15,6 +15,8 @@ Can the model find a specific element in an image and report what's there? This 
 | Grouped bar value | **74.0%** | 576 | 2-10 series. 97% at 2 series, degrades to 50-53% at 9-10 series |
 | Line chart value | **75.7%** | 576 | 2-10 series. 100% at 2-3 series, degrades to 47% at 10 series |
 | Circled letter | **82.4%** | 624 | HuggingFace VLMs-are-Blind benchmark |
+| Pie value (with % labels) | **100%** | 60 | Reads percentage text |
+| Pie value (no % labels) | **53%** | 60 | Must estimate angular proportion visually |
 
 **Bottom line**: Spatial localization is solved for structured, low-clutter layouts (tables, simple charts, diagrams). It degrades sharply with visual density: grouped bar and line chart value reading drop from ~100% at 2-3 series to ~50% at 9-10 series. Failures come from series attribution confusion in dense charts, arrow tracing in complex DAGs, and fine-grained character localization under overlay.
 
@@ -136,6 +138,15 @@ Both tasks show the same pattern: near-perfect at 2-3 series, steady degradation
 | show_values=True | 72% |
 
 **Annotations still hurt for line charts** — with many overlapping series, value labels from adjacent lines create confusion. The model grabs a nearby label from the wrong series. Without labels, it estimates from gridlines and performs better overall.
+
+### Pie chart value estimation
+
+| Condition | Accuracy | n |
+|-----------|----------|---|
+| With % labels | **100%** | 60 |
+| Without % labels | **53%** | 60 |
+
+The text label effect is consistent with bar/line charts: percentage labels give perfect accuracy, without them the model must estimate angular proportions. Error distribution without labels: mean absolute error of 2.8 percentage points, 88% within ±5pp, 100% within ±10pp. The model approximates angular proportions reasonably but with less precision than bar height estimation.
 
 ---
 

@@ -17,9 +17,8 @@ import random
 
 from PIL import Image, ImageDraw, ImageFont
 import matplotlib.pyplot as plt
-import matplotlib.font_manager as fm
 
-from generate.base import TaskInstance, ensure_dir
+from generate.base import ensure_dir, make_instances, _get_font
 
 # Word pools for reading tasks
 WORDS = [
@@ -29,14 +28,6 @@ WORDS = [
 ]
 
 NUMBERS = ["42", "137", "256", "89", "1024", "73", "518", "365", "99", "2048"]
-
-
-def _get_font(size: int) -> ImageFont.FreeTypeFont:
-    try:
-        path = fm.findfont("DejaVu Sans")
-        return ImageFont.truetype(path, size)
-    except Exception:
-        return ImageFont.load_default()
 
 
 def _draw_text_on_canvas(
@@ -146,15 +137,8 @@ def generate(
                     fpath = os.path.join(out, fname)
                     _draw_text_on_canvas(word, fs, rot, fg, bg, canvas_size, fpath)
 
-                    prompt = (
-                        "What word is written in this image? "
-                        "Answer with the word in curly braces, e.g. {Revenue}."
-                    )
-                    instances.append(TaskInstance(
-                        image_path=os.path.abspath(fpath),
-                        prompt=prompt,
-                        ground_truth=word,
-                        task_type="text_word_reading",
+                    instances.extend(make_instances(
+                        fpath, "text_word_reading", word,
                         subtask=f"font{fs}_rot{rot}_c{contrast}",
                         metadata={
                             "text": word, "font_size": fs, "rotation": rot,
@@ -173,15 +157,8 @@ def generate(
                 fpath = os.path.join(out, fname)
                 _draw_text_on_canvas(number, fs, rot, fg, bg, canvas_size, fpath)
 
-                prompt = (
-                    "What number is written in this image? "
-                    "Answer with the number in curly braces, e.g. {42}."
-                )
-                instances.append(TaskInstance(
-                    image_path=os.path.abspath(fpath),
-                    prompt=prompt,
-                    ground_truth=int(number),
-                    task_type="text_number_reading",
+                instances.extend(make_instances(
+                    fpath, "text_number_reading", int(number),
                     subtask=f"font{fs}_rot{rot}",
                     metadata={
                         "text": number, "font_size": fs, "rotation": rot,
@@ -202,15 +179,8 @@ def generate(
 
                 # Ask about a specific category's value
                 q_idx = random.randint(0, n_cats - 1)
-                prompt = (
-                    f"What is the value for {categories[q_idx]}? "
-                    f"Answer with a number in curly braces, e.g. {{42}}."
-                )
-                instances.append(TaskInstance(
-                    image_path=os.path.abspath(fpath),
-                    prompt=prompt,
-                    ground_truth=values[q_idx],
-                    task_type="chart_bar_value",  # reuse number extractor
+                instances.extend(make_instances(
+                    fpath, "chart_bar_value", values[q_idx],
                     subtask=f"label_font{lfs}_rot{lrot}",
                     metadata={
                         "chart_type": "text_stress",
@@ -218,6 +188,7 @@ def generate(
                         "categories": categories, "values": values,
                         "query_category": categories[q_idx],
                     },
+                    category=categories[q_idx],
                 ))
 
     return instances

@@ -14,10 +14,10 @@ import os
 import random
 
 import matplotlib.pyplot as plt
-import matplotlib
 import numpy as np
 
 from generate.base import TaskInstance, ensure_dir, make_instances
+from generate.chart_common import COLORS
 
 # Category label pools
 MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",

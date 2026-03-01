@@ -14,7 +14,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from generate.base import TaskInstance, ensure_dir, make_instances
-from evaluate.prompts import get_prompt
 
 
 def _segment_intersection(p1, p2, p3, p4):
@@ -77,7 +76,7 @@ def _generate_balanced_pairs(n_points, target_per_count, max_intersections, max_
 
 
 def generate(
-    n_per_intersection: int = 10,
+    n_per_config: int = 10,
     output_dir: str = "generate/images",
     canvas_sizes: list[int] | None = None,
     line_widths: list[float] | None = None,
@@ -105,7 +104,7 @@ def generate(
         # n_points polyline has (n_points-1) segments, max intersections = (n-1)^2
         # but practically capped lower
         max_int = n_points - 1  # max intersections per pair of segments
-        collected = _generate_balanced_pairs(n_points, n_per_intersection, max_int)
+        collected = _generate_balanced_pairs(n_points, n_per_config, max_int)
 
         for n_int, pairs in collected.items():
             for idx, (blue, red) in enumerate(pairs):
@@ -146,7 +145,7 @@ def generate(
 
 
 if __name__ == "__main__":
-    insts = generate(n_per_intersection=3, canvas_sizes=[512], line_widths=[3.0],
+    insts = generate(n_per_config=3, canvas_sizes=[512], line_widths=[3.0],
                      n_points_list=[3, 4])
     print(f"Generated {len(insts)} instances")
     for inst in insts[:10]:

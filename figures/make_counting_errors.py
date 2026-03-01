@@ -1,8 +1,5 @@
 """Generate composite error figure for counting/enumeration primitive."""
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
+from figures.error_composite import make_error_composite
 
 cases = [
     {
@@ -25,24 +22,5 @@ cases = [
     },
 ]
 
-fig, axes = plt.subplots(1, 3, figsize=(9, 3.8))
-
-for ax, case in zip(axes, cases):
-    img = mpimg.imread(case["image"])
-    ax.imshow(img, cmap="gray")
-    ax.set_xticks([])
-    ax.set_yticks([])
-    for spine in ax.spines.values():
-        spine.set_linewidth(0.5)
-        spine.set_color("#999999")
-
-    label = (
-        f"GT: {case['gt']}  |  Model: {case['model']}\n"
-        f"{case['caption']}"
-    )
-    ax.set_xlabel(label, fontsize=8, labelpad=6)
-
-fig.tight_layout(pad=1.0)
-fig.savefig("figures/counting_enumeration_errors.png", dpi=200, bbox_inches="tight",
-            facecolor="white")
-print("Saved figures/counting_enumeration_errors.png")
+make_error_composite(cases, "figures/counting_enumeration_errors.png",
+                     figsize=(9, 3.8), fontsize=8, cmap="gray")

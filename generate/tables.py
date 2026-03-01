@@ -10,9 +10,8 @@ import os
 import random
 
 from PIL import Image, ImageDraw, ImageFont
-import matplotlib.font_manager as fm
 
-from generate.base import TaskInstance, ensure_dir, make_instances
+from generate.base import TaskInstance, ensure_dir, make_instances, _get_font
 
 # Entity pools for row headers
 ROW_POOLS = {
@@ -31,14 +30,6 @@ COL_METRICS = ["Revenue", "Units", "Score", "Growth", "Rating", "Cost", "Margin"
 HEADER_BG_COLOR = "#4472C4"
 HEADER_TEXT_COLOR = "white"
 ALT_ROW_COLOR = "#D9E2F3"
-
-
-def _get_font(size: int) -> ImageFont.FreeTypeFont:
-    try:
-        path = fm.findfont("DejaVu Sans")
-        return ImageFont.truetype(path, size)
-    except Exception:
-        return ImageFont.load_default()
 
 
 def _draw_table(

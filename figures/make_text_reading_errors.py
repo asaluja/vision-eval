@@ -1,8 +1,5 @@
 """Generate composite error figure for text reading primitive."""
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
+from figures.error_composite import make_error_composite
 
 cases = [
     {
@@ -25,24 +22,4 @@ cases = [
     },
 ]
 
-fig, axes = plt.subplots(1, 3, figsize=(10, 3.8))
-
-for ax, case in zip(axes, cases):
-    img = mpimg.imread(case["image"])
-    ax.imshow(img)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    for spine in ax.spines.values():
-        spine.set_linewidth(0.5)
-        spine.set_color("#999999")
-
-    label = (
-        f"GT: {case['gt']}  |  Model: {case['model']}\n"
-        f"{case['caption']}"
-    )
-    ax.set_xlabel(label, fontsize=7.5, labelpad=6)
-
-fig.tight_layout(pad=1.0)
-fig.savefig("figures/text_reading_errors.png", dpi=200, bbox_inches="tight",
-            facecolor="white")
-print("Saved figures/text_reading_errors.png")
+make_error_composite(cases, "figures/text_reading_errors.png")

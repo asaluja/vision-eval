@@ -12,7 +12,6 @@ Usage:
 
 import argparse
 import os
-import sys
 
 import config
 from data.blind import load_blind, list_tasks as list_blind_tasks

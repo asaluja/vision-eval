@@ -18,7 +18,6 @@ import matplotlib.patches as patches
 import numpy as np
 
 from generate.base import TaskInstance, ensure_dir, make_instances
-from evaluate.prompts import get_prompt
 
 # Station positions (on an 18x18 canvas)
 STATIONS = {

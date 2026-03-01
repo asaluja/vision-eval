@@ -7,6 +7,21 @@ import os
 from dataclasses import dataclass, field, asdict
 from typing import Any
 
+from PIL import ImageFont
+import matplotlib.font_manager as fm
+
+
+def _get_font(size: int) -> ImageFont.FreeTypeFont:
+    """Get a reliable font. Tries DejaVu Sans (ships with matplotlib), then Helvetica, then default."""
+    try:
+        path = fm.findfont("DejaVu Sans")
+        return ImageFont.truetype(path, size)
+    except Exception:
+        try:
+            return ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", size)
+        except Exception:
+            return ImageFont.load_default()
+
 
 @dataclass
 class TaskInstance:

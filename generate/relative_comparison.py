@@ -13,13 +13,10 @@ import os
 import random
 
 import matplotlib.pyplot as plt
-import matplotlib
 import numpy as np
 
-from generate.base import TaskInstance, ensure_dir
-from evaluate.prompts import get_prompt
-
-COLORS = list(matplotlib.cm.tab10.colors[:10])
+from generate.base import ensure_dir, make_instances
+from generate.chart_common import COLORS
 
 CATEGORY_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
 MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -116,17 +113,8 @@ def generate(
                     fpath = os.path.join(out, fname)
                     _make_comparison_bars(categories, values, (i1, i2), show_grid, fpath)
 
-                    # Question: which highlighted bar is taller?
-                    prompt = (
-                        f"Look at the two orange/highlighted bars ({categories[i1]} and {categories[i2]}). "
-                        f"Which one has a higher value? Answer with the label in curly braces, "
-                        f"e.g. {{{categories[0]}}}."
-                    )
-                    instances.append(TaskInstance(
-                        image_path=os.path.abspath(fpath),
-                        prompt=prompt,
-                        ground_truth=taller,
-                        task_type="chart_bar_compare",
+                    instances.extend(make_instances(
+                        fpath, "relative_bar_compare", taller,
                         subtask=f"bar_diff={diff}",
                         metadata={
                             "chart_type": "comparison_bar",
@@ -136,6 +124,7 @@ def generate(
                             "bar2": categories[i2], "bar2_val": values[i2],
                             "taller": taller,
                         },
+                        bar1=categories[i1], bar2=categories[i2],
                     ))
 
     # --- Part B: Line comparison (which series is higher at point X?) ---
@@ -166,16 +155,8 @@ def generate(
                 higher = s2_name
             gap = abs(s1_vals[x_idx] - s2_vals[x_idx])
 
-            prompt = (
-                f"At {x_labels[x_idx]}, which line has a higher value — "
-                f"{s1_name} or {s2_name}? "
-                f"Answer with the name in curly braces, e.g. {{{s1_name}}}."
-            )
-            instances.append(TaskInstance(
-                image_path=os.path.abspath(fpath),
-                prompt=prompt,
-                ground_truth=higher,
-                task_type="chart_bar_compare",  # reuse text-answer scorer
+            instances.extend(make_instances(
+                fpath, "relative_line_compare", higher,
                 subtask=f"line_gap={gap}",
                 metadata={
                     "chart_type": "comparison_line",
@@ -183,6 +164,7 @@ def generate(
                     "s1_val": s1_vals[x_idx], "s2_val": s2_vals[x_idx],
                     "value_gap": gap, "higher": higher,
                 },
+                series1=s1_name, series2=s2_name, x_point=x_labels[x_idx],
             ))
 
     return instances

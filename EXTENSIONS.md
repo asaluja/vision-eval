@@ -72,9 +72,16 @@ Fundamental and easy to generate at scale.
 
 The prior/bias override primitive tests whether the model reports what it sees vs. what it "knows" (e.g., 9×8 chessboard, die with 7 dots). Extended thinking may help the model override memorized defaults by giving it space to count carefully before committing to an answer.
 
-- [ ] Re-run `patterned_grid` and `board_games` with `--thinking --thinking-budget 8000`
-- [ ] Compare accuracy against non-thinking baseline
-- [ ] Check if bias-aligned error rate decreases (key metric: does extended thinking reduce reliance on priors?)
+- [x] Ran with `--thinking --thinking-budget 2048`
+
+### Results
+
+| Task | Baseline | Thinking | Delta |
+|------|----------|----------|-------|
+| Patterned grid | 15.5% | 17.1% | +1.6pp |
+| Board games | 60.0% | 59.5% | -0.5pp |
+
+**Extended thinking makes no difference.** The `_add` anomaly subtasks stay at 0%, canonical dimensions stay at 100%, and off-by-one board dimensions stay at 50%. This confirms the bias override failure is **perceptual, not reasoning** — the model can't see the extra dot or extra row regardless of how much it thinks about it. More thinking budget won't help when the visual representation itself doesn't encode the deviation from the memorized default.
 
 ---
 

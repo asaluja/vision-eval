@@ -104,6 +104,39 @@ Overall: **96.9%** (155/160)
 
 **Error pattern:** 100% of errors in the near-threshold zone are false positives — the model says "touching" when circles are separated. It never makes the opposite error (saying "separated" when actually touching/overlapping), except for the noisy r=0.05 case.
 
+#### Pie Chart Slice Comparison (Largest Slice)
+
+| n_slices | Accuracy | n |
+|----------|----------|---|
+| 3 | 70% | 10 |
+| 4 | 90% | 10 |
+| 5 | 70% | 10 |
+| 6 | 80% | 10 |
+| 7 | 80% | 10 |
+| 8 | 50% | 10 |
+
+Overall: **73.3%** (44/60) — no percentage labels shown.
+
+Errors correlate strongly with the gap between the largest and second-largest slice. Most errors occur when the top two slices differ by ≤5 percentage points (e.g., 34% vs 35%). At 8 slices the accuracy drops to 50%, since more slices means more candidates at similar sizes.
+
+This is notably harder than bar comparison, where diff≥2 is 100%. Angular estimation (pie wedges) is perceptually harder than height estimation (bars) for the same proportional difference — a ~5% relative difference in a pie chart (about 18° of arc) is much harder to resolve than a 5% height difference in a bar chart.
+
+#### Pie Chart Value Estimation
+
+| Condition | Accuracy | n |
+|-----------|----------|---|
+| With % labels | **100%** | 60 |
+| Without % labels | **53%** | 60 |
+
+The text label effect again: with percentage labels, value reading is perfect. Without labels, the model must estimate angular proportions visually.
+
+**Error distribution (no % labels):**
+- Mean absolute error: 2.8 percentage points
+- Within ±5%: 88.3%
+- Within ±10%: 100%
+
+Errors are small — the model approximates proportions reasonably but can't achieve the ±2pp tolerance threshold ~47% of the time. This is consistent with angular estimation being imprecise but not wildly wrong.
+
 ## Cross-Task Patterns
 
 1. **Discrete labeled comparison is solved.** Table max (100%), bar comparison at diff≥2 (100%), and line comparison at gap≥2 (100%) are all ceiling tasks. When elements have distinct labels and measurable values, the model compares correctly.
@@ -117,6 +150,8 @@ Overall: **96.9%** (155/160)
 5. **False positive bias in proximity.** Near the threshold, errors are exclusively "touching" when actually separated, never the reverse. The model has a systematic bias toward reporting contact. This is consistent with a prior that nearby objects are touching — a reasonable real-world prior that becomes incorrect for precisely separated geometric shapes.
 
 6. **No distractor effect for comparison.** Increasing bars from 4 to 12 has no impact on comparison accuracy. The model successfully attends to highlighted elements and ignores irrelevant context. This contrasts with counting tasks where more elements consistently degrades performance.
+
+7. **Angular comparison (pie) is harder than height comparison (bars).** Bar comparison is 100% at diff≥2 (~2-3% relative); pie slice comparison is 73% overall, with errors at gaps up to 12 percentage points. Estimating angles/areas is perceptually harder than comparing aligned bar heights — consistent with psychophysics research showing humans are also worse at angle vs. length judgments.
 
 ## Finetuning Implications
 

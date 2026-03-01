@@ -162,6 +162,23 @@ Without text, accuracy on grids ≥9 rows drops to **0-10%**. With text labels, 
 - 9×10: 0%
 - 11×12: 0%
 
+#### Pie Chart Slice Counting
+
+| Source | Overall Exact | n |
+|--------|--------------|---|
+| Generated | **100%** | 60 |
+
+Perfect across all slice counts (3-8), even without category labels (legend-only). Pie chart slices are non-overlapping and visually distinct — each wedge has a unique color and clear boundaries. This places pie counting in the **ceiling** category alongside bar/table/diagram counting.
+
+| Slices | Exact |
+|--------|-------|
+| 3 | 100% |
+| 4 | 100% |
+| 5 | 100% |
+| 6 | 100% |
+| 7 | 100% |
+| 8 | 100% |
+
 ## Generated vs HF Benchmark Comparison
 
 Raw accuracy numbers differ between generated and HF sources. Three systematic factors explain the gaps:
@@ -183,7 +200,7 @@ Grid counting is the best-matched task: once text-labeled samples are removed an
 
 ## Cross-Task Patterns
 
-1. **Structured, labeled counting is solved.** Charts, tables, and diagrams with distinct visual elements hit 100% regardless of count. The ceiling is not reached even at 30 elements.
+1. **Structured, labeled counting is solved.** Charts, tables, diagrams, and pie chart slices with distinct visual elements hit 100% regardless of count. Pie slices are perfect up to 8 despite having no text labels — each wedge's unique color and clear boundary is sufficient. The ceiling is not reached even at 30 elements.
 
 2. **Visual-only counting degrades with overlap and density.** The core failure is distinguishing individual elements when they overlap or are packed densely. This is a perceptual limitation, not a reasoning one. Shape complexity compounds the effect: pentagons (60.0%) are much harder than circles (90.0%) at matched count ranges (5-9).
 

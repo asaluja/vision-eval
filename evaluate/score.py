@@ -118,7 +118,8 @@ def score_instance(task_type: str, ground_truth: Any, response: str, metadata: d
                      "chart_line_count",
                      "table_cell_lookup", "table_row_count",
                      "diagram_node_count",
-                     "text_number_reading"):
+                     "text_number_reading",
+                     "pie_slice_count"):
         extracted = extract_number(response)
         result["extracted"] = extracted
         if extracted is not None:
@@ -126,7 +127,10 @@ def score_instance(task_type: str, ground_truth: Any, response: str, metadata: d
 
     # Chart value reading (tolerance-based: model must estimate from visual)
     elif task_type in ("chart_bar_value", "chart_grouped_value", "chart_line_value",
-                       "conflict_value_label", "conflict_legend_color"):
+                       "conflict_value_label", "conflict_legend_color",
+                       "chart_legend_match",
+                       "pie_value_estimate",
+                       "heatmap_cell_value"):
         extracted = extract_number(response)
         result["extracted"] = extracted
         if extracted is not None:
@@ -175,7 +179,9 @@ def score_instance(task_type: str, ground_truth: Any, response: str, metadata: d
     elif task_type in ("chart_bar_compare", "table_max",
                        "diagram_next_step", "diagram_decision",
                        "text_word_reading", "color_grid_odd",
-                       "conflict_annotation"):
+                       "relative_bar_compare", "relative_line_compare",
+                       "conflict_annotation",
+                       "pie_slice_compare"):
         extracted = extract_text_answer(response)
         result["extracted"] = extracted
         if extracted is not None:

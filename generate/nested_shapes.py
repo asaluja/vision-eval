@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 from generate.base import TaskInstance, ensure_dir, make_instances
-from evaluate.prompts import get_prompt
 
 
 def _draw_nested_squares(ax, depth: int, line_thickness: float, canvas_frac: float = 0.8):

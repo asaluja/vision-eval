@@ -4,7 +4,7 @@ description: Distill a detailed evaluation summary .md file into a copy-pastable
 argument-hint: <path-to-summary.md>
 ---
 
-Distill the detailed evaluation summary at `$ARGUMENTS` into a concise, copy-pastable report section targeting ~1 page in Google Docs.
+Distill the detailed evaluation summary at `$ARGUMENTS` (typically in `summaries/`) into a concise, copy-pastable report section targeting ~1 page in Google Docs.
 
 ## Output format
 

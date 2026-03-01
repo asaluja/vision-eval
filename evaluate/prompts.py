@@ -228,6 +228,82 @@ PROMPTS = {
         "Which bar is the tallest? "
         "Answer with its label in curly braces, e.g. {{January}}.",
     ],
+    # --- Pie charts ---
+    "pie_slice_count": [
+        "How many slices are in this pie chart? "
+        "Answer with a number in curly braces, e.g. {{5}}.",
+
+        "Count the total number of segments in this pie chart. "
+        "Put your answer in curly braces, e.g. {{5}}.",
+    ],
+    "pie_value_estimate": [
+        "What percentage of the pie chart does {category} represent? "
+        "Answer with a number in curly braces, e.g. {{25}}.",
+
+        "Estimate the percentage share of {category} in this pie chart. "
+        "Put your answer in curly braces, e.g. {{25}}.",
+    ],
+    "pie_slice_compare": [
+        "Which category has the largest slice in this pie chart? "
+        "Answer with the category name in curly braces, e.g. {{January}}.",
+
+        "Which segment of this pie chart is the biggest? "
+        "Answer with its label in curly braces, e.g. {{January}}.",
+    ],
+    # --- Text reading (OCR) ---
+    "text_word_reading": [
+        "What word is written in this image? "
+        "Answer with the word in curly braces, e.g. {{Revenue}}.",
+
+        "Read the text in this image. What word does it say? "
+        "Put your answer in curly braces, e.g. {{Revenue}}.",
+    ],
+    "text_number_reading": [
+        "What number is written in this image? "
+        "Answer with the number in curly braces, e.g. {{42}}.",
+
+        "Read the number shown in this image. "
+        "Put your answer in curly braces, e.g. {{42}}.",
+    ],
+    # --- Color discrimination ---
+    "chart_legend_match": [
+        "What is the value of the {color} bar? "
+        "Answer with a number in curly braces, e.g. {{42}}.",
+
+        "Read the height of the bar labeled {color} in the legend. "
+        "Put your answer in curly braces, e.g. {{42}}.",
+    ],
+    "color_grid_odd": [
+        "One cell in this grid is a different shade from the rest. "
+        "Which cell is it? Answer with the column letter and row number "
+        "in curly braces, e.g. {{B3}}.",
+
+        "Find the cell whose color doesn't match the others. "
+        "Give your answer as column letter + row number in curly braces, e.g. {{B3}}.",
+    ],
+    "heatmap_cell_value": [
+        "What is the value in cell {row}{col}? "
+        "Answer with a number in curly braces, e.g. {{42}}.",
+
+        "Read the value at row {row}, column {col} from the heatmap. "
+        "Put your answer in curly braces, e.g. {{42}}.",
+    ],
+    # --- Relative comparison ---
+    "relative_bar_compare": [
+        "The two highlighted bars are {bar1} and {bar2}. "
+        "Which one has a higher value? "
+        "Answer with the label in curly braces, e.g. {{{bar1}}}.",
+
+        "Of the two highlighted (orange) bars, {bar1} and {bar2}, which bar is taller? "
+        "Put your answer in curly braces, e.g. {{{bar1}}}.",
+    ],
+    "relative_line_compare": [
+        "At {x_point}, which line has a higher value — {series1} or {series2}? "
+        "Answer with the name in curly braces, e.g. {{{series1}}}.",
+
+        "Looking at {x_point} on the x-axis, is {series1} or {series2} higher? "
+        "Put your answer in curly braces, e.g. {{{series1}}}.",
+    ],
     # --- Cross-representation comparison ---
     "chart_data_match": [
         "Chart A and Chart B show data using different chart types. "

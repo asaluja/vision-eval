@@ -81,7 +81,8 @@ Multi-task generators (`chart`, `table`, `diagram`) produce several task_types e
 ## Key Directories
 
 - `generate/images/` — generated PNGs organized by task type
-- `results/` — JSONL instance metadata, evaluation results, and markdown summaries
+- `summaries/` — per-primitive markdown summaries (compiled into report via `/report-compile`)
+- `results/` — JSONL instance metadata and evaluation results only (no HTML, no markdown summaries)
 - `figures/` — charts, plots, and error composite PNGs for the report
 - `data/cache/` and `data/images/` — HF dataset downloads
 
@@ -91,4 +92,4 @@ Multi-task generators (`chart`, `table`, `diagram`) produce several task_types e
 - `MODEL_ID` in `config.py` is `claude-haiku-4-5-20251001` — all evaluation targets this model.
 - Requires `from __future__ import annotations` for `X | Y` union syntax (Python 3.9).
 - Uses `uv` for virtual environment and package management.
-- All output figures/plots go in `figures/`, not `results/`. The `results/` directory is for JSONL data and markdown summaries only.
+- All output figures/plots go in `figures/`, not `results/`. The `results/` directory is for JSONL data and `report.html` only. Summaries go in `summaries/`.

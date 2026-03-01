@@ -14,18 +14,8 @@ import os
 import random
 
 from PIL import Image, ImageDraw, ImageFont
-import matplotlib.font_manager as fm
 
-from generate.base import TaskInstance, ensure_dir, make_instances
-from evaluate.prompts import get_prompt
-
-
-def _get_font(size: int) -> ImageFont.FreeTypeFont:
-    try:
-        path = fm.findfont("DejaVu Sans")
-        return ImageFont.truetype(path, size)
-    except Exception:
-        return ImageFont.load_default()
+from generate.base import TaskInstance, ensure_dir, make_instances, _get_font
 
 
 # Standard dice dot positions (relative to cell center, as fractions of cell size)

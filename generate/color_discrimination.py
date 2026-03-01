@@ -17,8 +17,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import numpy as np
 
-from generate.base import TaskInstance, ensure_dir
-from evaluate.prompts import get_prompt
+from generate.base import ensure_dir, make_instances
 
 # Color families — pairs/triples of similar hues for discrimination testing
 SIMILAR_COLOR_GROUPS = {
@@ -175,15 +174,8 @@ def generate(
                     q_color_name = colors[q_idx][1]
                     q_value = values[q_idx]
 
-                    prompt = (
-                        f"What is the value of the {q_color_name} bar? "
-                        f"Answer with a number in curly braces, e.g. {{42}}."
-                    )
-                    instances.append(TaskInstance(
-                        image_path=os.path.abspath(fpath),
-                        prompt=prompt,
-                        ground_truth=q_value,
-                        task_type="chart_bar_value",  # reuse number extractor
+                    instances.extend(make_instances(
+                        fpath, "chart_legend_match", q_value,
                         subtask=f"color_{difficulty}_n{n_bars}",
                         metadata={
                             "chart_type": "color_discrimination",
@@ -192,6 +184,7 @@ def generate(
                             "color_family": family_name,
                             "categories": categories, "values": values,
                         },
+                        color=q_color_name,
                     ))
 
     # --- Part B: Color grid — find the odd cell ---
@@ -240,16 +233,8 @@ def generate(
                     # Row/col labels (1-indexed for rows, letters for cols)
                     cell_id = f"{chr(ord('A') + odd_c)}{odd_r + 1}"
 
-                    prompt = (
-                        f"One cell in this grid is a different shade from the rest. "
-                        f"Which cell is it? Answer with the column letter and row number "
-                        f"in curly braces, e.g. {{B3}}."
-                    )
-                    instances.append(TaskInstance(
-                        image_path=os.path.abspath(fpath),
-                        prompt=prompt,
-                        ground_truth=cell_id,
-                        task_type="color_grid_odd",
+                    instances.extend(make_instances(
+                        fpath, "color_grid_odd", cell_id,
                         subtask=f"grid_{grid_size}_{family_name}_{grid_diff}",
                         metadata={
                             "grid_size": grid_size, "color_family": family_name,

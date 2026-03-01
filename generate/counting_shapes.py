@@ -12,10 +12,7 @@ import random
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-import numpy as np
-
 from generate.base import TaskInstance, ensure_dir, make_instances
-from evaluate.prompts import get_prompt
 
 
 def _olympic_layout(n: int, diameter: float, overlap_frac: float = 0.3):

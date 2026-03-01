@@ -10,7 +10,6 @@ Usage:
 
 import argparse
 import os
-import sys
 
 import config
 from generate.base import TaskInstance, save_instances, load_instances
@@ -40,6 +39,8 @@ TASK_REGISTRY = {
     "text_reading": ("generate.text_reading", {}),
     "chart_comparison": ("generate.chart_comparison", {}),
     "text_visual_conflict": ("generate.text_visual_conflict", {}),
+    "pie_charts": ("generate.pie_charts", {}),
+    "heatmap": ("generate.heatmap", {}),
 }
 
 
@@ -59,19 +60,11 @@ def generate_all(tasks: list[str], n_per_config: int) -> dict[str, list[TaskInst
 
         print(f"Generating: {task_name}...")
 
-        # Different generators have different n parameter names
-        if task_name == "line_intersection":
-            instances = gen_module.generate(
-                n_per_intersection=n_per_config,
-                output_dir=config.GENERATED_DIR,
-                **extra_kwargs,
-            )
-        else:
-            instances = gen_module.generate(
-                n_per_config=n_per_config,
-                output_dir=config.GENERATED_DIR,
-                **extra_kwargs,
-            )
+        instances = gen_module.generate(
+            n_per_config=n_per_config,
+            output_dir=config.GENERATED_DIR,
+            **extra_kwargs,
+        )
 
         # Save instance metadata
         meta_path = os.path.join(config.RESULTS_DIR, f"{task_name}_instances.jsonl")

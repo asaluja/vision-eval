@@ -10,7 +10,7 @@ import numpy as np
 # Ordered by primitive, then descending accuracy within primitive
 data = [
     # Counting / Enumeration
-    ("Counting", "Chart bars/series/lines/rows/nodes (5 tasks)", 0.98, 1456),
+    ("Counting", "Chart bars/series/lines/rows/nodes/slices (6 tasks)", 0.99, 1636),
     ("Counting", "Circles (counts 5-9, gen)", 0.90, 50),
     ("Counting", "Nested squares (depth 2-5)", 0.87, 300),
     ("Counting", "HF circles (counts 5-9)", 0.66, 480),
@@ -18,10 +18,11 @@ data = [
     ("Counting", "Pentagons (counts 5-9, gen)", 0.60, 250),
 
     # Spatial Localization
-    ("Spatial", "Table cell / diagram / simple bar", 1.00, 784),
+    ("Spatial", "Table cell / diagram / bar / pie (labeled)", 1.00, 844),
     ("Spatial", "Grouped bar value (2-3 series)", 0.97, 128),
     ("Spatial", "Circled letter (HF)", 0.82, 624),
     ("Spatial", "Line chart value (5+ series)", 0.65, 384),
+    ("Spatial", "Pie value (no % labels)", 0.53, 60),
     ("Spatial", "Grouped bar value (9-10 series)", 0.51, 128),
 
     # Line / Path Following
@@ -35,6 +36,7 @@ data = [
     ("Comparison", "Table max / bar comparison (diff>=2)", 1.00, 720),
     ("Comparison", "Bar comparison (diff=1)", 0.94, 100),
     ("Comparison", "Touching circles (gap>=15px)", 1.00, 500),
+    ("Comparison", "Pie largest slice (no labels)", 0.73, 60),
     ("Comparison", "Touching circles (gap 5-12px)", 0.15, 350),
 
     # Color Discrimination

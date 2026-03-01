@@ -21,6 +21,7 @@ Each regime needs a different training lever: SFT to establish new behaviors, DP
 | Data Category | Volume | Generator | Purpose |
 |---|---|---|---|
 | Charts WITHOUT value labels | 80K | `charts.py`, `show_values=False` only | Force visual bar/line height estimation |
+| Pie charts WITHOUT % labels | 30K | `pie_charts.py`, `show_percentages=False` | Force angular/proportional estimation (53% baseline) |
 | Charts with WRONG value labels | 40K | `text_visual_conflict.py`, `conflict_value_label` | Teach conflict detection and visual override |
 | Blank grids (no coordinate text) | 30K | `grid_counting.py`, `with_text=False` | Force visual grid-line counting |
 | Non-overlapping shape counting | 30K | `counting_shapes.py`, overlap ≤ 0.1, counts 3-12 | Basic counting without perceptual ambiguity |
@@ -61,6 +62,8 @@ The reintroduction of correct labels is critical — we don't want a model that 
 | Annotation conflict (gap < 15) | 5K | Moderate (75% accuracy) | Chosen: actual max bar. Rejected: annotated bar. |
 | Path following overcounts | 5K | Good (97% of errors are overcounts) | Chosen: target path count. Rejected: total path count. |
 
+**Extended thinking doesn't help bias override.** Re-running board games and patterned grids with `--thinking --thinking-budget 2048` produced no improvement (+1.6pp grids, -0.5pp boards). This confirms the failure is perceptual, not reasoning — the model can't see the deviation from the memorized pattern regardless of how much it thinks. Implication: DPO is the right lever here, not chain-of-thought. The model needs to learn to *count* rather than *recall*, and that requires training signal, not inference-time compute.
+
 **Why board games are the single best DPO source**: 100% bias alignment with zero variance across 400 evaluations means every non-canonical instance produces a perfectly clean preference pair — no noise, no ambiguity, no edge cases. The chosen response always includes explicit counting ("1, 2, 3, 4, 5, 6, 7 — that's 7 rows"), teaching the model to count before answering. The rejected response always pattern-matches ("chess board = 8 rows").
 
 **Critical safeguard**: Include canonical-dimension boards (8×8 chess, 19×19 Go) in the training set where both chosen and rejected demonstrate counting — the chosen response counts and gets the canonical number, the rejected gets it wrong. This prevents the model from learning "always say non-canonical."
@@ -74,6 +77,8 @@ The reintroduction of correct labels is critical — we don't want a model that 
 | Task | Volume | Reward Function | Curriculum |
 |---|---|---|---|
 | Overlapping shape counting | 50K | `R=1.0` exact, `0.5` if ±1, `0.0` else | overlap 0.1 → 0.5 |
+| Pie value estimation (no labels) | 20K | `R=1.0` within ±2pp, `0.5` within ±5pp, `0.0` else | n_slices 3 → 8 |
+| Pie slice comparison (no labels) | 15K | `R=1.0` correct, `0.0` else | gap between top-2 slices: 15pp → 3pp |
 | Path following (distractor) | 40K | `R=1.0` exact, `0.0` else (answer space is 1-3) | total_connections 2 → 6 |
 | Line intersection | 30K | `R=1.0` exact, `0.3` if ±1, `+0.2` bonus if GT=0 ∧ pred=0 | 3-point → 5-point |
 | Dense chart value reading | 40K | `R=1.0` within tolerance, `0.5` within 2× tolerance | n_series 3 → 10 |
@@ -195,8 +200,10 @@ The reward function for visual grounding has three deliberate design choices:
 | Grid counting (blank) | 49% | 75-85% | 80-90% |
 | Chart value (no labels, ≤5 series) | ~85% | 90-95% | 92-97% |
 | Chart value (no labels, 8-10 series) | ~50% | 55-65% | 65-75% |
+| Pie value estimate (no % labels) | 53% | 65-75% | 70-80% |
+| Pie slice comparison (no % labels) | 73% | 80-85% | 85-90% |
 
-The residual gap (not reaching 100%) is genuine visual estimation error — even with perfect grounding, interpolating between gridlines has irreducible noise.
+The residual gap (not reaching 100%) is genuine visual estimation error — even with perfect grounding, interpolating between gridlines or estimating angular proportions has irreducible noise. Pie charts have a wider residual gap than bars because angular estimation is perceptually harder than height estimation.
 
 ---
 
@@ -224,6 +231,7 @@ Reserve 20% of parameter space per generator for held-out test:
 - Touching circles: hold out dist=0.035, dist=0.075 (interpolation)
 - Color grids: hold out "purples" family entirely
 - Path following: hold out total_connections=5 with target=2
+- Pie charts: hold out n_slices=7 (interpolation between trained 6 and 8)
 
 **Regression monitoring**: After each stage, run full eval via `python run_phase1.py --eval-only --workers 10` across all tasks. Critical regression gates:
 - Table cell lookup must remain 100%
