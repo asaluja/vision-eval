@@ -12,13 +12,13 @@ data = [
     # Counting / Enumeration
     ("Counting", "Chart bars/series/lines/rows/nodes/slices (6 tasks)", 0.99, 1636),
     ("Counting", "Circles (counts 5-9, gen)", 0.90, 50),
-    ("Counting", "Nested squares (depth 2-5)", 0.87, 300),
+    ("Counting", "Nested squares (depth 2-5)", 0.85, 306),
     ("Counting", "HF circles (counts 5-9)", 0.66, 480),
-    ("Counting", "Grid counting (blank)", 0.63, 608),
+    ("Counting", "Grid counting (blank)", 0.62, 638),
     ("Counting", "Pentagons (counts 5-9, gen)", 0.60, 250),
 
     # Spatial Localization
-    ("Spatial", "Table cell / diagram / bar / pie (labeled)", 1.00, 844),
+    ("Spatial", "Table cell / diagram / bar / pie (labeled)", 1.00, 904),
     ("Spatial", "Grouped bar value (2-3 series)", 0.97, 128),
     ("Spatial", "Circled letter (HF)", 0.82, 624),
     ("Spatial", "Line chart value (5+ series)", 0.65, 384),
@@ -28,36 +28,37 @@ data = [
     # Line / Path Following
     ("Line/Path", "Diagram decision following", 1.00, 450),
     ("Line/Path", "Trend detection (named series)", 0.95, 576),
-    ("Line/Path", "Intersection counting (3-pt lines)", 0.72, 3650),
+    ("Line/Path", "Intersection counting (3-pt lines)", 0.65, 3660),
     ("Line/Path", "Path counting (distractor mode)", 0.53, 800),
     ("Line/Path", "Intersection counting (5-pt lines)", 0.18, 50),
 
     # Relative Comparison
-    ("Comparison", "Table max / bar comparison (diff>=2)", 1.00, 720),
-    ("Comparison", "Bar comparison (diff=1)", 0.94, 100),
-    ("Comparison", "Touching circles (gap>=15px)", 1.00, 500),
+    ("Comparison", "Table max / bar comparison (diff>=2)", 1.00, 740),
+    ("Comparison", "Touching circles (gap>=15px)", 1.00, 300),
+    ("Comparison", "Bar comparison (diff=1)", 0.91, 100),
     ("Comparison", "Pie largest slice (no labels)", 0.73, 60),
-    ("Comparison", "Touching circles (gap 5-12px)", 0.15, 350),
+    ("Comparison", "Touching circles (gap 1-12px)", 0.15, 350),
 
     # Color Discrimination
-    ("Color", "Color grid (DL>=16)", 1.00, 100),
-    ("Color", "Color grid (DL~10)", 0.88, 50),
-    ("Color", "Bar chart (same-family, n=5)", 0.58, 53),
-    ("Color", "Color grid (DL~7)", 0.52, 50),
-    ("Color", "Color grid (DL~5)", 0.18, 50),
+    ("Color", "Distinct hues / color grid (DL>=16)", 1.00, 230),
+    ("Color", "Color grid (DL~10)", 0.86, 100),
+    ("Color", "Legend match (same family, 5 bars)", 0.62, 50),
+    ("Color", "Heatmap value reading", 0.56, 270),
+    ("Color", "Color grid (DL~5)", 0.21, 100),
 
     # Text Reading
-    ("Text/OCR", "Chart labels / words >=20px", 1.00, 435),
-    ("Text/OCR", "Words (font=10, 0 deg)", 1.00, 75),
-    ("Text/OCR", "Words (font=10, 90 deg)", 0.47, 75),
-    ("Text/OCR", "Numbers (font=10, 90 deg)", 0.00, 25),
+    ("Text/OCR", "Words (font>=14, all rotations)", 0.99, 300),
+    ("Text/OCR", "Words (font=10)", 0.83, 150),
+    ("Text/OCR", "Numbers (font=10)", 0.55, 40),
+    ("Text/OCR", "Words (font=8)", 0.45, 150),
+    ("Text/OCR", "Numbers (font=8)", 0.20, 40),
 
     # Prior Bias Override
-    ("Prior Bias", "Board games (canonical dims)", 1.00, 80),
-    ("Prior Bias", "Optical illusions (HF)", 0.57, 792),
+    ("Prior Bias", "Flags (HF)", 0.40, 240),
     ("Prior Bias", "Patterned grid (remove anomaly)", 0.31, 126),
-    ("Prior Bias", "Board games (non-canonical dims)", 0.00, 320),
+    ("Prior Bias", "Logos (shoe, HF)", 0.056, 144),
     ("Prior Bias", "Patterned grid (add anomaly)", 0.00, 126),
+    ("Prior Bias", "Logos (car, HF)", 0.00, 270),
 
     # Visual-Textual Consistency
     ("Grounding", "Title trend / legend color conflict", 1.00, 80),
@@ -78,7 +79,7 @@ COLORS = {
 }
 
 # ---------- build figure ----------
-fig, ax = plt.subplots(figsize=(10, 11))
+fig, ax = plt.subplots(figsize=(10, 12))
 
 # Sort: group by primitive (in order above), within each group descending accuracy
 primitives_order = list(dict.fromkeys(d[0] for d in data))  # preserve insertion order

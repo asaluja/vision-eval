@@ -9,8 +9,8 @@ Can the model find a specific element in an image and report what's there? This 
 | Task | Accuracy | n | Notes |
 |------|----------|---|-------|
 | Table cell lookup | **100%** | 480 | 12 grid sizes × 2 styles × 2 prompt phrasings × 2 query sets |
-| Diagram decision (Yes/No) | **100%** | 240 | Across all template complexities |
-| Diagram next step | **94.2%** | 120 | All 7 errors in multi_decision template |
+| Diagram decision (Yes/No) | **100%** | 300 | Across all template complexities |
+| Diagram next step | **96.1%** | 180 | All 7 errors in multi_decision template |
 | Bar chart value | **100%** | 64 | Simple bar charts (tolerance ±5% or ±2) |
 | Grouped bar value | **74.0%** | 576 | 2-10 series. 97% at 2 series, degrades to 50-53% at 9-10 series |
 | Line chart value | **75.7%** | 576 | 2-10 series. 100% at 2-3 series, degrades to 47% at 10 series |
@@ -50,15 +50,15 @@ Two independent query sets (v1 and v2) hit different cells in the same 120 table
 
 ---
 
-## 2. Diagram Navigation (98.1%, 353/360)
+## 2. Diagram Navigation (98.5%, 473/480)
 
 **Source**: Generated (matplotlib flowcharts)
 **Axes**: Template complexity (linear, single_branch, asymmetric, multi_decision), n_steps (3, 5, 7)
 
 | Template | diagram_decision | diagram_next_step |
 |----------|-----------------|-------------------|
-| linear | — | 100% (30/30) |
-| single_branch | 100% (60/60) | 100% (30/30) |
+| linear | — | 100% (60/60) |
+| single_branch | 100% (120/120) | 100% (60/60) |
 | asymmetric | 100% (60/60) | 100% (30/30) |
 | multi_decision | 100% (120/120) | **76.7%** (23/30) |
 
@@ -80,7 +80,7 @@ Each image has two prompt variants; both fail identically, confirming the errors
 
 **The remaining error is actually an extraction bug**: on `flow_multi_decision_n3_4`, the model correctly identifies "Complete?" as the next step after "Run Tests", but it also mentions alternative branch outcomes in braces (`{Notify Team}`, `{Assign Task}`) earlier in its reasoning. The regex extractor grabs the *first* `{...}` match instead of the last, picking up "Notify Team" from the reasoning rather than "Complete?" from the final answer.
 
-**Takeaway**: The true model error rate on diagrams is 6/360 (98.3%). The failure mode is specifically *arrow tracing through visual clutter* — long diagonal arrows converging on a shared terminal node. Decision-following and node identification are effectively perfect.
+**Takeaway**: The true model error rate on diagrams is 6/480 (98.75%). The failure mode is specifically *arrow tracing through visual clutter* — long diagonal arrows converging on a shared terminal node. Decision-following and node identification are effectively perfect.
 
 ---
 
@@ -192,7 +192,7 @@ Three cells drop to near-zero: random word positions 0 and 5 (0% each) and Subde
 
 ### Deep Dive: Adjacent-Letter Errors Dominate
 
-Of 110 total errors, **70% (74/106 with valid extraction) are off by exactly one position** — the model localizes the circle to the right general region but picks an adjacent character. Only 25% of errors are truly non-local. This is the dominant failure mode across all three words.
+Of 110 total errors, **70% (74/106 with valid extraction) are off by exactly one position** — the model localizes the circle to the right general region but picks an adjacent character. About 30% of errors (32/106) are truly non-local. This is the dominant failure mode across all three words.
 
 **Directional bias differs by word type:**
 - Real words: strong **leftward** bias (24 left-neighbor vs 3 right-neighbor errors)
@@ -235,6 +235,30 @@ Spatial localization in **structured, low-density layouts** is effectively solve
 - Diagram decision-following: 100% across all complexity levels
 - Simple bar chart value reading: 100%
 - Multi-series charts at 2-3 series: 97-100%
+
+---
+
+## 5. Pie Slice Value Estimation (76.7%, 92/120)
+
+**Source**: Generated (matplotlib pie charts)
+**Axes**: n_slices (3–8), show_percentages (True/False)
+
+| Condition | Accuracy | n |
+|-----------|----------|---|
+| With % labels shown | **100%** | 60 |
+| Without % labels | **53%** | 60 |
+
+When percentage labels are visible the model reads the text and achieves 100%. Without labels it must estimate angular proportions visually, dropping to 53%. This is consistent with the series-confusion finding in bar/line charts: the model defaults to reading text when available and struggles with purely visual estimation.
+
+By n_slices (no labels only):
+
+| n_slices | 3 | 4 | 5 | 6 | 7 | 8 |
+|----------|---|---|---|---|---|---|
+| Accuracy | 70% | 90% | 70% | 80% | 80% | 50% |
+
+No monotonic trend — errors depend on the specific proportions drawn, not slice count alone.
+
+---
 
 ### Where It Breaks Down
 

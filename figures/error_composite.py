@@ -1,4 +1,5 @@
 """Shared renderer for 3-panel error composite figures."""
+from __future__ import annotations
 
 import matplotlib
 matplotlib.use("Agg")

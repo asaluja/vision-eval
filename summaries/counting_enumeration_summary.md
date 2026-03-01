@@ -118,7 +118,7 @@ If bias-driven errors were removed, HF accuracy would be 83.5% — close to gen'
 
 | Source | Overall Exact | Within ±1 | Within ±2 | n |
 |--------|--------------|-----------|-----------|---|
-| Generated | 88.3% | 100% | 100% | 60 |
+| Generated | 86.4% | 100% | 100% | 66 |
 | HF Blind | 84.2% | 100% | 100% | 240 |
 
 **By depth (HF Blind):**
@@ -138,8 +138,8 @@ Clear degradation with nesting depth. All errors are within ±1 — the model ne
 
 | Source | Overall Exact | Within ±1 | Within ±2 | n |
 |--------|--------------|-----------|-----------|---|
-| Generated (all) | 74.5% | 97.5% | 100% | 200 |
-| Generated (blank only) | 49.0% | — | — | 100 |
+| Generated (all) | 75.0% | 97.3% | 100% | 220 |
+| Generated (blank only) | 50.0% | — | — | 110 |
 | HF Blind (all blank) | 64.8% | 98.9% | 100% | 528 |
 
 **The text label effect (generated):**
@@ -147,11 +147,11 @@ Clear degradation with nesting depth. All errors are within ±1 — the model ne
 | Condition | Exact |
 |-----------|-------|
 | with_text=True | **100%** |
-| with_text=False | **49%** |
+| with_text=False | **50%** |
 
 Without text, accuracy on grids ≥9 rows drops to **0-10%**. With text labels, the model is perfect at all sizes. This mirrors the chart value reading finding: the model reads text, not the visual.
 
-**Matched-range comparison (blank grids, rows 3-10):** Gen 61.3% vs HF 64.8%. Nearly identical once text-labeled samples are removed and ranges are matched. The gen overall (74.5%) is inflated by the 50% with_text=True samples scoring 100%.
+**Matched-range comparison (blank grids, rows 3-10):** Gen 61.3% vs HF 64.8%. Nearly identical once text-labeled samples are removed and ranges are matched. The gen overall (75.0%) is inflated by the 50% with_text=True samples scoring 100%.
 
 **Errors are exclusively in the row dimension** — column counting is perfect across all sizes. The model struggles specifically with counting horizontal grid lines.
 

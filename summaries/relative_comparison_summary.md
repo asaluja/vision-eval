@@ -4,7 +4,7 @@
 Can the model compare two visual elements and determine which is larger/higher/closer/more? This spans bar height comparison, line series comparison, pie slice comparison, table max identification, and proximity/touching detection.
 
 ## Key Finding
-**Comparison is solved for discrete, labeled elements (bars, table cells) down to value differences of 2. At diff=1 (~1% relative difference), accuracy drops to 89%. Proximity detection reveals a sharp perceptual threshold: the model cannot distinguish "separated" from "touching" below ~12-15 pixels of visible gap. Pie slice comparison (73%) is substantially harder than bar comparison (98%) for the same proportional differences, confirming angular estimation is a weaker perceptual channel.**
+**Comparison is solved for discrete, labeled elements (bars, table cells) down to value differences of 2. At diff=1 (~1% relative difference), accuracy drops to 91%. Proximity detection reveals a sharp perceptual threshold: the model cannot distinguish "separated" from "touching" below ~12-15 pixels of visible gap. Pie slice comparison (73%) is substantially harder than bar comparison (98%) for the same proportional differences, confirming angular estimation is a weaker perceptual channel.**
 
 ## Tasks Evaluated
 
@@ -14,9 +14,9 @@ Can the model compare two visual elements and determine which is larger/higher/c
 |------|----------|---|--------|-------|
 | Table max value | 100% | 240 | Local | 3-10 rows × 2-5 cols, plain and shaded styles |
 | Bar comparison (diff≥2) | 100% | 500 | Local | value_diff=[2,5,10,20,40], all n_bars and grid configs |
-| Line comparison (gap≥1) | 100% | 38 | Local | 2-line charts, all non-zero gaps correct |
+| Line comparison (gap≥10) | 100% | 60 | Local | 2-line charts, y=auto/100/200; gaps ≥10 always correct |
 | Highest bar (chart) | 98.4% | 64 | Local | 3-10 category charts, natural data |
-| Relative bar compare (overall) | 98.2% | 600 | Local | Across all diffs, including diff=1 |
+| Relative bar compare (overall) | 98.5% | 600 | Local | Across all diffs, including diff=1 |
 
 **Table max** is perfect across all 24 configurations (4 row counts × 3 column counts × 2 styles). The model reads numeric values from table cells flawlessly and compares them correctly.
 
@@ -28,7 +28,7 @@ Can the model compare two visual elements and determine which is larger/higher/c
 
 | value_diff | Accuracy | n |
 |-----------|----------|---|
-| 1 | **89.0%** | 100 |
+| 1 | **91.0%** | 100 |
 | 2 | 100% | 100 |
 | 5 | 100% | 100 |
 | 10 | 100% | 100 |
@@ -39,17 +39,17 @@ Can the model compare two visual elements and determine which is larger/higher/c
 
 | n_bars | grid=False | grid=True |
 |--------|-----------|-----------|
-| 4 | 100% | 70% |
-| 6 | 80% | 100% |
-| 8 | 80% | 100% |
-| 10 | 80% | 100% |
-| 12 | 100% | 80% |
+| 4 | 80% | 100% |
+| 6 | 100% | 60% |
+| 8 | 100% | 80% |
+| 10 | 90% | 100% |
+| 12 | 100% | 100% |
 
 - The threshold is sharp at diff=1 (absolute difference of 1 unit on a ~60-95 scale, i.e., ~1-1.7% relative difference).
 - At diff=2 (~2-3% relative), accuracy is already 100%. No gradual degradation — the cliff is between 1% and 2% relative difference.
-- Number of distractor bars (4-12) has **no significant effect** — accuracy is 97.5-98.3% across all n_bars values.
+- Number of distractor bars (4-12) has **no significant effect** — accuracy is 96.7-100% across all n_bars values.
 - Grid lines show **no consistent directional effect** — errors at diff=1 are scattered across grid/no-grid conditions.
-- **Error pattern**: All 11 errors at diff=1 follow the same failure mode — the model picks the wrong bar of the highlighted pair. Base values range from 60-91, confirming the model struggles with sub-2% relative differences regardless of absolute magnitude.
+- **Error pattern**: All 9 errors at diff=1 follow the same failure mode — the model picks the wrong bar of the highlighted pair. Base values range from 60-91, confirming the model struggles with sub-2% relative differences regardless of absolute magnitude.
 
 #### Line Series Comparison
 
@@ -130,26 +130,24 @@ Overall: **93.3%** (224/240) — two charts shown side-by-side, ask if the under
 | bar_v vs line | 97.5% | 80 |
 | bar_v vs pie | **85.0%** | 80 |
 
-**By match/perturbation (bar_v vs pie only):**
+**By match condition (bar_v vs pie only):**
 
 | Condition | Accuracy | n |
 |-----------|----------|---|
 | Same data (GT=Yes) | **75.0%** | 40 |
-| Different: replace | 100% | 10 |
-| Different: swap | 95.8% | 24 |
-| Different: shift | 83.3% | 6 |
+| Different data (GT=No) | **95.0%** | 40 |
 
-The asymmetry is striking: the model correctly detects that data is *different* (97%+) but struggles to confirm data is *the same* when one chart is a pie (75%). This is consistent with the pie slice value estimation finding (53% without % labels) — the model cannot read exact pie proportions precisely enough to verify equality. When the data is the same, it needs to confirm every value matches; one imprecise pie reading causes a false "No." When data is different, any one mismatch is sufficient to say "No," which is easier.
+The asymmetry is striking: the model correctly detects that data is *different* (95%) but struggles to confirm data is *the same* when one chart is a pie (75%). This is consistent with the pie slice value estimation finding (53% without % labels) — the model cannot read exact pie proportions precisely enough to verify equality. When the data is the same, it needs to confirm every value matches; one imprecise pie reading causes a false "No." When data is different, any one mismatch is sufficient to say "No," which is easier.
 
 By n_categories: accuracy is 90-97% across all sizes (3-6), with slight degradation at n=4 (91.7%) and n=6 (90.0%) — more categories means more values to cross-check.
 
 ## Cross-Task Patterns
 
-1. **Discrete labeled comparison is solved.** Table max (100%), bar comparison at diff≥2 (100%), line comparison at gap≥1 (100%), and cross-representation matching with non-pie charts (97.5%) are all ceiling tasks. When elements have distinct labels and measurable values, the model compares correctly.
+1. **Discrete labeled comparison is solved.** Table max (100%), bar comparison at diff≥2 (100%), line comparison at gap≥10 (100%), and cross-representation matching with non-pie charts (97.5%) are all ceiling tasks. When elements have distinct labels and measurable values, the model compares correctly — though line comparison at small gaps degrades significantly when the y-axis is fixed.
 
 2. **The 1% relative difference threshold for bars.** At diff=1 on a base of 60-95, the model cannot reliably distinguish heights that differ by ~1-1.7%. At diff=2 (~2-3%), it's perfect. The cliff is razor-sharp with no gradual degradation curve.
 
-3. **No distractor effect for comparison.** Increasing bars from 4 to 12 has no impact on comparison accuracy (97.5-98.3% across all n_bars). The model successfully attends to highlighted elements and ignores irrelevant context, contrasting with counting tasks where more elements degrade performance.
+3. **No distractor effect for comparison.** Increasing bars from 4 to 12 has no impact on comparison accuracy (96.7-100% across all n_bars). The model successfully attends to highlighted elements and ignores irrelevant context, contrasting with counting tasks where more elements degrade performance.
 
 4. **Pixel-level proximity detection has a hard ~12-15px floor.** Below ~12px of visible gap between circle edges, the model defaults to "touching." This is a fundamental resolution limit, not a reasoning failure.
 
@@ -159,7 +157,7 @@ By n_categories: accuracy is 90-97% across all sizes (3-6), with slight degradat
 
 7. **Angular comparison (pie) is harder than height comparison (bars).** Bar comparison is 100% at diff≥2; pie slice comparison is 73% overall. Estimating angles/areas is perceptually harder than comparing aligned bar heights for the same proportional difference.
 
-9. **Pie chart imprecision propagates to cross-representation matching.** The bar-vs-pie `chart_data_match` task (85%) fails predominantly on the "same data" case (75%), where the model must confirm every pie proportion matches the bar values exactly. A single imprecise angle read causes a false "No." Detecting differences (97%+) is easy — confirming equality requires all reads to be precise.
+9. **Pie chart imprecision propagates to cross-representation matching.** The bar-vs-pie `chart_data_match` task (85%) fails predominantly on the "same data" case (75%), where the model must confirm every pie proportion matches the bar values exactly. A single imprecise angle read causes a false "No." Detecting differences (95%) is substantially easier — confirming equality requires all reads to be precise.
 
 8. **Line comparison difficulty is entirely determined by y-axis scale.** With auto-zoom, line comparison at gap=1 is 95%. With a fixed y=200 axis, the same gap=1 drops to 65% — worse than bar comparison at diff=1 (91%). The apparent ease of line comparison in naive evals is an artifact of matplotlib's default auto-scaling making small differences look large. When the axis is fixed to reflect a realistic data range, line and bar comparison have similar thresholds.
 
@@ -167,7 +165,7 @@ By n_categories: accuracy is 90-97% across all sizes (3-6), with slight degradat
 
 - **Proximity calibration is the highest-value target.** The 12-15px threshold and the r=0.10 pathological bias represent clear, systematic errors. Training pairs: (nearly-touching circles with visible gap → "No") at various scales.
 - **DPO pairs for touching circles:** The sharp 0% → 100% transitions provide ideal hard negative mining. Pairs at dist=0.05 (wrong) vs dist=0.20 (right) for the same radius create high-quality preference pairs.
-- **Diff=1 bar comparison is near the noise floor.** At 89%, the absolute value difference (1 pixel of bar height) is genuinely at visual resolution limits. Chain-of-thought reasoning may help more than visual finetuning.
+- **Diff=1 bar comparison is near the noise floor.** At 91%, the absolute value difference (1 pixel of bar height) is genuinely at visual resolution limits. Chain-of-thought reasoning may help more than visual finetuning.
 - **Pie slice comparison needs angular reasoning training.** At 73%, this is the weakest structured comparison task. Training with explicit angular estimation ("slice A spans ~120°, slice B spans ~115°") could help.
 - **Line comparison training should use fixed y-axis ranges.** Training on auto-zoomed charts gives a misleading ~95% accuracy. Real charts use fixed scales — train on y_max=100/200 with small gaps to build genuine comparison ability rather than auto-scale exploitation.
 - **Scale-aware proximity training:** The r=0.10 pathological behavior suggests the model needs proximity training specifically at the small-circle regime.

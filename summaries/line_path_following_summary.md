@@ -30,7 +30,7 @@ Diagram tasks involve following explicitly labeled arrows between discrete nodes
 
 | Source | Mode | Accuracy | n |
 |--------|------|----------|---|
-| Generated | Simple (all paths A→B) | 74.1% | 54 |
+| Generated | Simple (all paths A→B) | 73.3% | 60 |
 | Generated | Distractor (mixed connections) | 56.2% | 80 |
 | HF Blind | Distractor (mixed connections) | 51.7% | 720 |
 
@@ -77,7 +77,7 @@ Perfect for 1–3 paths. Sharp degradation at 4+ where paths overlap visually.
 
 | Source | Accuracy | n |
 |--------|----------|---|
-| Generated (3-point lines) | 84.4% | 50 |
+| Generated (3-point lines) | 85.0% | 60 |
 | Generated (4-point lines) | 32.5% | 40 |
 | Generated (5-point lines) | 18.0% | 50 |
 | HF Blind (3-point lines) | 64.6% | 3600 |
@@ -151,7 +151,7 @@ Relatively flat across x-axis point counts. The n_categories=3 dip (92.4%) refle
 |---------|------|------|------|-------|
 | 2-4 | 100% | 100% | 100% | 100% |
 | 5-7 | 94% | 100% | 96% | 94% |
-| 8-10 | 83% | 96% | 92% | 88% |
+| 8-10 | 83% | 92% | 92% | 88% |
 
 Errors concentrate in the **high n_series + low n_categories** corner — many overlapping lines with few data points. This is where visual isolation of a single series is hardest and trend signal is weakest.
 

@@ -2,13 +2,13 @@
 
 ## Context
 
-Evaluation across 8 perceptual primitives (~12K evals, 35 JSONL files) reveals that Haiku 4.5's vision failures are not a continuum — they cluster into three mechanistically distinct regimes requiring different training strategies:
+Evaluation across 8 perceptual primitives (~15K evals, 35+ JSONL files) reveals that Haiku 4.5's vision failures are not a continuum — they cluster into three mechanistically distinct regimes requiring different training strategies:
 
-1. **OCR-as-crutch** (value-label conflict 0%, grid counting 49→100% with text): the model reads text instead of perceiving visuals
-2. **Memorized priors override vision** (board games 100% bias alignment, Olympic rings, patterned grids 0% on add-anomaly): canonical knowledge short-circuits perception
-3. **Perceptual resolution limits** (path tracing, intersection detection, proximity, color discrimination): degradation scales with visual complexity along smooth psychometric curves
+1. **OCR-as-crutch** (value-label conflict 0%, grid counting 50→100% with text): the model reads text instead of perceiving visuals
+2. **Perceptual resolution limits** (path tracing, intersection detection, proximity, color discrimination, dense chart reading): degradation scales with visual complexity along smooth psychometric curves — all clearly in-distribution for practical tasks
+3. **Memorized priors override vision** (logos 1.9% with 99.8% bias alignment, flags 40% with 83% bias, patterned grids 0% on add-anomaly): canonical knowledge short-circuits perception — though logos/flags are largely out-of-distribution for typical VLM use cases
 
-Each regime needs a different training lever: SFT to establish new behaviors, DPO to override priors, RL to sharpen perceptual strategies.
+Each regime needs a different training lever: SFT to establish new behaviors, DPO to calibrate perceptual judgments and override text reliance, RL to sharpen perceptual strategies. The priority ranking reflects practical impact: OCR-as-crutch silently affects every chart/table task, perceptual limits govern the hardest in-distribution failures, and memorized priors — while dramatic — primarily affect niche tasks (brand logos, flag elements) that rarely arise in production.
 
 ---
 

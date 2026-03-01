@@ -3,13 +3,13 @@ from figures.error_composite import make_error_composite
 
 cases = [
     {
-        "image": "generate/images/path_following/paths_6_s512_lw4.0_0.png",
-        "gt": "6 paths A\u2192B",
+        "image": "generate/images/path_following/paths_dist_t6_q1_CD_s512_0.png",
+        "gt": "1 path C\u2192D",
         "model": "5",
-        "caption": "Loses track of overlapping colored paths",
+        "caption": "Counts all visible routes, ignores endpoint filter",
     },
     {
-        "image": "generate/images/line_intersection/lines_p5_int0_s512_lw3.0_0.png",
+        "image": "generate/images/line_intersection/lines_p4_int0_s512_lw3.0_0.png",
         "gt": "0 intersections",
         "model": "2",
         "caption": "Hallucinates crossings from visual proximity",

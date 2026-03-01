@@ -123,7 +123,7 @@ RdBu (diverging, passes through white at center) is hardest — near-neutral mid
 
 | Tolerance | Within | % |
 |-----------|--------|---|
-| Exact (±0) | 70/270 | 25.9% |
+| Exact (±0) | 69/270 | 25.6% |
 | ±2 | 150/270 | 55.6% |
 | ±5 | 194/270 | 71.9% |
 | ±10 | 235/270 | 87.0% |

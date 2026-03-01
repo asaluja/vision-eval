@@ -48,8 +48,8 @@ Auto-counts last updated from results/ directory. See `docs/` for other referenc
 | `text_number_reading` | Local | ✓ | 200 | Text Reading |
 | `patterned_grid` | Local | ✓ | 252 | Prior/Bias Override |
 | `patterned_grid` | HF | ✓ | 336 | Prior/Bias Override |
-| `flags` | HF | ❌ | 0 | Prior/Bias Override |
-| `logos` | HF | ❌ | 0 | Prior/Bias Override |
+| `flags` | HF | ✓ | 240 | Prior/Bias Override |
+| `logos` | HF | ✓ | 414 | Prior/Bias Override |
 | `conflict_value_label` | Local | ✓ | 40 | Visual-Textual Consistency |
 | `conflict_title_trend` | Local | ✓ | 40 | Visual-Textual Consistency |
 | `conflict_legend_color` | Local | ✓ | 40 | Visual-Textual Consistency |

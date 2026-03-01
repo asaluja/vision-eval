@@ -3,22 +3,22 @@ from figures.error_composite import make_error_composite
 
 cases = [
     {
-        "image": "generate/images/board_games/chess_7x8_s512_0.png",
-        "gt": "7 rows",
-        "model": "8 (canonical)",
-        "caption": "100% bias alignment: always outputs 8\u00d78",
+        "image": "data/images/biased/car_001_notitle_Q1_px768.png",
+        "gt": "4 (points + ring)",
+        "model": "3 (canonical star)",
+        "caption": "Car logos: 0% — retrieves canonical, never counts",
+    },
+    {
+        "image": "data/images/biased/flag_stars_001_notitle_Q1_px768.png",
+        "gt": "13",
+        "model": "12 (canonical EU)",
+        "caption": "Flags: 40% — 83% of errors are exact biased answer",
     },
     {
         "image": "generate/images/patterned_grid/pgrid_dice_add_g6_s768_0.png",
         "gt": "1 (cell has extra dot)",
-        "model": "4",
-        "caption": "Add-anomaly: 0% \u2014 extra dot is invisible",
-    },
-    {
-        "image": "data/images/biased/Ebbinghaus_001_Q1_notitle_px384.png",
-        "gt": "Same size (Yes)",
-        "model": "No",
-        "caption": "Ebbinghaus illusion: 50% = pure chance",
+        "model": "4 (canonical count)",
+        "caption": "Patterned grid add-anomaly: 0% — extra shape invisible",
     },
 ]
 
