@@ -4,7 +4,7 @@
 Can the model read text at varying sizes, rotations, and contrast levels? This isolates the OCR capability that all chart, table, and document tasks depend on.
 
 ## Key Finding
-**Text reading is solved at font ≥14px (≥95% across all rotations), but collapses rapidly below 10px. Font=8px drops to 45% for words and 20% for numbers. Font=6px is near-zero (13% words, 10% numbers). Numbers degrade faster than words at every size because the model's lexical priors can rescue partial word recognition but provide no fallback for digits. At font=8+rotation, the model hallucinates plausible-looking but completely wrong words.**
+**Text reading is near-perfect at font ≥14px for words (97–100%) and reliable for upright text, but 45° rotation degrades both words (87% at font=14) and numbers (60% at font=20). Below 10px, accuracy collapses: font=8px drops to 45% for words and 20% for numbers; font=6px is near-zero (13% words, 10% numbers). Numbers degrade faster than words at every size because the model's lexical priors can rescue partial word recognition but provide no fallback for digits. At font=8+rotation, the model hallucinates plausible-looking but completely wrong words.**
 
 ## Tasks Evaluated
 
@@ -13,11 +13,10 @@ Can the model read text at varying sizes, rotations, and contrast levels? This i
 | Task | Accuracy | n | Condition |
 |------|----------|---|-----------|
 | `text_word_reading` (font=20) | 100% | 150 | All rotations, all contrasts |
-| `text_word_reading` (font=14) | 97.3% | 150 | All rotations, all contrasts |
-| `text_number_reading` (font=14) | 95.0% | 40 | All rotations |
-| `text_number_reading` (font=20) | 82.5% | 40 | Degrades at 45° rotation |
+| `text_word_reading` (font=14) | 97.3% | 150 | Aggregate; drops to 87% at rot=45° |
+| `text_number_reading` (font=14) | 95.0% | 40 | Aggregate; 100% at 0°/45°/90° but 80% at 30° |
 
-Font ≥14px is readable under any rotation (0-90°) and contrast condition tested.
+Word reading at font=20 is the only true ceiling across all rotations. At font=14, words drop to 87% at 45° rotation. Numbers are more fragile: font=20 is only 82.5% (n=40) due to 60% accuracy at 45° rotation, and font=14 dips to 80% at 30°.
 
 ### Degrading Tasks
 
@@ -76,8 +75,7 @@ Below font=8, the model doesn't fail silently — it hallucinates plausible Engl
 - GT="Compliance" → "Suitcase" (font=6, rot=90°)
 - GT="Marketing" → "Explore" (font=6, rot=90°)
 - GT="Quarterly" → "Socks" (font=6, rot=90°)
-- GT="Forecast" → "Forrest" (font=10, rot=90°)
-- GT="Analysis" → "Analyze" (font=10, rot=30°-45°)
+- GT="Analysis" → "Analyze" (font=10, rot=30°)
 - GT="Revenue" → "Revisions" / "Reversals" (font=10, rot=90°)
 
 At tiny sizes and high rotations, the model sees a word-shape blob and generates whatever word its prior suggests. Errors are not random character substitutions — they're coherent words that share approximate visual features with the target.
@@ -122,10 +120,10 @@ Font=8 with any rotation is essentially 0%. Font=10 with rotation ≥45° drops 
 **Number error patterns — digit-level failures:**
 Unlike word errors (lexical hallucination), number errors show raw OCR failure at the digit level:
 - "73" → "13" (7→1 confusion at angle)
-- "518" → "5128" (phantom digit insertion)
-- "256" → "325" (digit transposition and substitution)
+- "518" → "528" (single digit substitution)
+- "256" → "254" (single digit substitution)
 - "365" → "55" (digit dropping)
-- "2048" → "2548" (single digit substitution)
+- "2048" → "2024" (year prior substitution)
 - "89" → "88" (single-digit confusion)
 - At font=6-8: "I can only see a small icon / symbol" — model stops perceiving text entirely
 
@@ -133,7 +131,7 @@ Numbers lack lexical rescue. With words, partial letter recognition enables lang
 
 ## Cross-Task Patterns
 
-1. **Font=14px is the practical floor for reliable reading.** At 14px, both words (97.3%) and numbers (95.0%) are near-ceiling regardless of rotation or contrast. Most chart text, axis labels, and document body text is ≥12-14px, placing typical business content in the reliable zone.
+1. **Font=14px is the practical floor for reliable reading — at 0° and 90°.** At 14px and upright/vertical orientation, both words (100%) and numbers (100%) are at ceiling. Aggregate accuracy (97.3% words, 95.0% numbers) masks 45° degradation: words drop to 87%, and numbers at font=20 drop to 60% at this angle. Most chart text is upright or 90°-rotated, so typical business content falls in the reliable zone, but oblique labels (e.g., angled axis tick labels) are at risk.
 
 2. **The 8px cliff is steep and unexpected.** Word accuracy drops 38pp (83%→45%) and number accuracy drops 35pp (55%→20%) from 10px to 8px. Small icon labels, footnotes, and footnote annotations commonly fall in the 6-9px range and will be largely unreadable.
 
@@ -151,4 +149,4 @@ Numbers lack lexical rescue. With words, partial letter recognition enables lang
 - **Numbers need dedicated training.** They cannot benefit from lexical priors — each digit must be learned independently. Training curriculum: start with single digits at small sizes, build to multi-digit numbers with rotation.
 - **Include vertical text explicitly.** 90° rotation is a qualitatively distinct pattern. Dedicated exposure to vertically oriented text (axis labels rotated 90°, vertical signage) would help.
 - **Lexical hallucination at tiny sizes is a safety concern.** At font=6 the model confidently outputs plausible but wrong words. Applications relying on OCR of small text need explicit uncertainty calibration, not just accuracy improvement.
-- **Font ≥14px needs no improvement** — already ≥95% across all conditions.
+- **Font ≥14px at 0°/90° needs no improvement** — already at ceiling. Oblique angles (30–45°) at font=14–20 still show 80–87% for words and 60–90% for numbers, presenting a smaller but real training opportunity.

@@ -1,3 +1,17 @@
+# Extensions & Known Issues
+
+## Patterned Grid: Generator Bug (Fixed, Needs Re-evaluation)
+
+The `generate/patterned_grids.py` generator had a ground-truth bug: `actual_count` was set to `count` after the cell-drawing loop, but `count` is reassigned on every iteration, so it held the value from the last cell drawn (an edge cell, always 1) rather than the anomaly cell's actual shape count.
+
+**Impact**: All patterned grid results in `results/patterned_grid_results.jsonl` have incorrect ground truth (always 1). The reported 15.5% accuracy and 0% add-anomaly accuracy were artifacts of scoring against wrong labels. With corrected ground truth, the model actually achieves ~76% overall — it counts correctly most of the time. The entire narrative about the model being unable to see anomalies was inverted.
+
+**Fix**: Capture `anomaly_count = count` inside the anomaly cell branch before the loop overwrites `count`.
+
+**Action needed**: Re-generate and re-evaluate to produce correct results. Once done, the patterned grid section can be restored to the prior bias override summary. The task is currently excluded from all summaries and figures pending re-evaluation.
+
+---
+
 # Extensions: Synthetic Image Pairs
 
 ## Motivation
@@ -68,20 +82,31 @@ Fundamental and easy to generate at scale.
 
 # Extended Thinking Experiments
 
-## Prior / Bias Override with Extended Thinking
+## Extended Thinking Results
 
-The prior/bias override primitive tests whether the model reports what it sees vs. what it "knows" (e.g., 9×8 chessboard, die with 7 dots). Extended thinking may help the model override memorized defaults by giving it space to count carefully before committing to an answer.
-
-- [x] Ran with `--thinking --thinking-budget 2048`
+Ran with `--thinking --thinking-budget 8000` across multiple primitives.
 
 ### Results
 
-| Task | Baseline | Thinking | Delta |
-|------|----------|----------|-------|
-| Patterned grid | 15.5% | 17.1% | +1.6pp |
-| Board games | 60.0% | 59.5% | -0.5pp |
+| Primitive | Task | Baseline | Thinking | Delta |
+|-----------|------|----------|----------|-------|
+| Prior Bias | Board games | 60.0% | 59.5% | -0.5pp |
+| Prior Bias | conflict_annotation | 75.0% | **90.0%** | **+15.0pp** |
+| Prior Bias | conflict_value_label | 0% | 0% | — |
+| Prior Bias | conflict_title_trend | 100% | 97.5% | -2.5pp |
+| Prior Bias | conflict_legend_color | 100% | 97.5% | -2.5pp |
+| Rel. Comparison | pie_slice_compare | 73.3% | 75.0% | +1.7pp |
+| Rel. Comparison | pie_slice_count | 100% | 98.3% | -1.7pp |
+| Rel. Comparison | pie_value_estimate | 76.7% | 72.5% | -4.2pp |
+| Color | heatmap_cell_value | 55.9% | 56.3% | +0.4pp |
 
-**Extended thinking makes no difference.** The `_add` anomaly subtasks stay at 0%, canonical dimensions stay at 100%, and off-by-one board dimensions stay at 50%. This confirms the bias override failure is **perceptual, not reasoning** — the model can't see the extra dot or extra row regardless of how much it thinks about it. More thinking budget won't help when the visual representation itself doesn't encode the deviation from the memorized default.
+**Key insight: Extended thinking only helps annotation conflicts (+15pp).** This is the one task where the model sees the correct answer but is swayed by a misleading signal — giving it space to reason helps it resist. All other tasks are perceptual, not reasoning, failures:
+- Value labels (0%→0%): OCR-level text reliance is not a reasoning problem
+- Board games (-0.5pp): Cannot see the extra row regardless of thinking time
+- Pie charts (+1.7pp): Angular estimation doesn't improve with reasoning
+- Heatmap (+0.4pp): Color-to-value interpolation is perceptual
+
+*Note: Patterned grid thinking results were removed due to a generator ground-truth bug (see top of this file). Re-evaluation needed before conclusions can be drawn.*
 
 ---
 

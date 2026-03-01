@@ -12,7 +12,6 @@ Valid primitive names:
 - `color_discrimination`
 - `text_reading`
 - `prior_bias_override`
-- `visual_textual_consistency`
 
 (Already completed: `counting_enumeration`, `spatial_localization`)
 
@@ -212,7 +211,7 @@ python run_phase1.py --eval-only --tasks text_reading --workers 10
 
 ### 5. `prior_bias_override`
 
-**Definition**: Can the model report what it actually sees, overriding memorized canonical defaults?
+**Definition**: Can the model report what it actually sees, overriding both memorized canonical defaults and misleading text annotations?
 
 | task_type | Source | Rec. n | Primary Axes |
 |---|---|---|---|
@@ -220,23 +219,6 @@ python run_phase1.py --eval-only --tasks text_reading --workers 10
 | `patterned_grid` | HF (biased) | — | — |
 | `flags` | HF (biased) | — | — |
 | `logos` | HF (biased) | — | — |
-
-**Commands**:
-```bash
-python run_phase1.py --generate-only --n 3 --tasks patterned_grid
-python run_phase1.py --eval-only --tasks patterned_grid --workers 10
-python run_benchmarks.py --dataset biased --topics "Patterned Grid" "Flags" "Logos" --workers 10
-```
-Always report **bias alignment rate** alongside accuracy for this primitive.
-
----
-
-### 6. `visual_textual_consistency`
-
-**Definition**: Does the model ground its answers in visual content, or does it defer to text annotations?
-
-| task_type | Source | Rec. n | Primary Axes |
-|---|---|---|---|
 | `conflict_value_label` | Local | 3 | n_bars: [3,5,7], conflict_magnitude: [small,large] |
 | `conflict_title_trend` | Local | 3 | n_points: [5,8,12], conflict_type: [increasing↔decreasing] |
 | `conflict_legend_color` | Local | 3 | n_series: [2,3,4] |
@@ -244,11 +226,11 @@ Always report **bias alignment rate** alongside accuracy for this primitive.
 
 **Commands**:
 ```bash
-python run_phase1.py --generate-only --n 3 --tasks text_visual_conflict
-python run_phase1.py --eval-only --tasks text_visual_conflict --workers 10
+python run_phase1.py --generate-only --n 3 --tasks patterned_grid text_visual_conflict
+python run_phase1.py --eval-only --tasks patterned_grid text_visual_conflict --workers 10
+python run_benchmarks.py --dataset biased --topics "Patterned Grid" "Flags" "Logos" --workers 10
 ```
-For each error, also check `text_reliant` flag in metadata — this is the key signal for grounding failures.
-Note: `chart_data_match` moved to `relative_comparison` primitive.
+Always report **bias alignment rate** alongside accuracy for prior bias tasks, and **text_reliant rate** for conflict tasks.
 
 ---
 
@@ -286,6 +268,5 @@ Note: `chart_data_match` moved to `relative_comparison` primitive.
 - The `chart`, `table`, `diagram`, and `pie_charts` generators each produce MULTIPLE task_types. Generate the full task and filter analysis to the relevant task_types for the primitive.
 - Always check `docs/task_inventory.md` for current result counts before deciding what to regenerate.
 - The pipeline's resume support skips already-evaluated `(image_path, prompt)` pairs — safe to re-run.
-- For `prior_bias_override`, always report **bias alignment rate** alongside accuracy.
-- For `visual_textual_consistency`, check the `text_reliant` metadata flag on errors.
+- For `prior_bias_override`, always report **bias alignment rate** alongside accuracy for prior bias tasks, and **text_reliant rate** for conflict tasks.
 - HF biased `flags`/`logos` task_types will be `flags` and `logos` via the lowercase fallback in `data/biased.py`.

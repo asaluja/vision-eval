@@ -192,7 +192,7 @@ Three cells drop to near-zero: random word positions 0 and 5 (0% each) and Subde
 
 ### Deep Dive: Adjacent-Letter Errors Dominate
 
-Of 110 total errors, **70% (74/106 with valid extraction) are off by exactly one position** — the model localizes the circle to the right general region but picks an adjacent character. About 30% of errors (32/106) are truly non-local. This is the dominant failure mode across all three words.
+Of 110 total errors, **70% (74/106 with valid extraction) are off by exactly one position** — the model localizes the circle to the right general region but picks an adjacent character. "Off-by-one" is verified by checking the extracted letter against `word[circle_index ± 1]`, not just positional distance (see `checks/check_circled_letter.py`). Left-neighbor matches account for 40, right-neighbor for 36, with 2 errors matching both (Acknowledgement pos 11: `m` → `E`, where `e` flanks both sides). About 30% of errors (32/106) are truly non-local. This is the dominant failure mode across all three words.
 
 **Directional bias differs by word type:**
 - Real words: strong **leftward** bias (24 left-neighbor vs 3 right-neighbor errors)
@@ -204,7 +204,7 @@ The direction flip is explained by visual saliency: in the random word, lowercas
 
 The two 0% cells in the random word both involve lowercase letters between uppercase neighbors:
 
-**Position 0 (`t` before `H`)**: 12/12 wrong. The model literally cannot see the lowercase `t` at the start of the string. Multiple responses begin: *"I can see a red circle around the first letter of the string 'HyUiKaRbNqWeOpXcZvM'"* — the model reads the string as starting with `H`, completely missing the `t`. 7 of 12 responses answer `H`; the other 5 fail to extract any letter at all.
+**Position 0 (`t` before `H`)**: 12/12 wrong. The model literally cannot see the lowercase `t` at the start of the string. Multiple responses begin: *"I can see a red circle around the first letter of the string 'HyUiKaRbNqWeOpXcZvM'"* — the model reads the string as starting with `H`, completely missing the `t`. 7 of 12 responses answer `H`; 3 fail to extract any letter, and 2 answer `I`.
 
 **Position 5 (`K` between `i` and `a`)**: 12/12 wrong. Despite `K` being uppercase, the circle is small and positioned at the boundary between characters. 10/12 responses answer `a` (the right neighbor). The model identifies the full string correctly but consistently mislocates the circle one position rightward.
 
@@ -254,7 +254,7 @@ By n_slices (no labels only):
 
 | n_slices | 3 | 4 | 5 | 6 | 7 | 8 |
 |----------|---|---|---|---|---|---|
-| Accuracy | 70% | 90% | 70% | 80% | 80% | 50% |
+| Accuracy | 70% | 50% | 50% | 50% | 30% | 70% |
 
 No monotonic trend — errors depend on the specific proportions drawn, not slice count alone.
 

@@ -4,7 +4,7 @@
 Can the model distinguish colors, match legend entries to data series, and detect shade differences? This spans legend-to-bar matching, odd-shade cell detection, and heatmap value reading.
 
 ## Key Finding
-**Color discrimination is solved for visually distinct colors (100%) but degrades sharply as shades converge. At ΔL≈7 (near-threshold lightness difference), odd-cell detection drops to 60%. At ΔL≈5 (extreme), it collapses to 21% — near random guessing. Heatmap value reading (56%) is the hardest task, requiring color reading and continuous scale interpolation simultaneously.**
+**Color discrimination is solved for visually distinct colors (100%) but degrades sharply as shades converge. At ΔL≈7 in HSL lightness (near-threshold), odd-cell detection drops to 60%. At ΔL≈5, it collapses to 21% — near random guessing. (ΔL is measured in HSL space, not perceptually uniform CIELAB; equivalent CIELAB ΔL* ranges are roughly 4–9 depending on hue.) Heatmap value reading (56%) is the hardest task, requiring color reading and continuous scale interpolation simultaneously.**
 
 ## Tasks Evaluated
 
@@ -59,7 +59,9 @@ Overall: **73.4%** (367/500)
 
 **By grid difficulty (ΔL = lightness delta between odd cell and base):**
 
-| Difficulty | ΔL approx | Accuracy | n |
+ΔL here is the difference in HSL lightness (Python `colorsys`), scaled 0–100. The generator holds hue and saturation fixed and varies only L: base at L=0.40, odd cell at L=0.40+delta. Note: HSL lightness is not perceptually uniform — the same ΔL produces different perceptual contrasts across color families (e.g., ΔL=5 in HSL corresponds to roughly 4.4–6.5 in CIELAB ΔL*, which partly explains the large cross-family accuracy spread below).
+
+| Difficulty | ΔL (HSL×100) | Accuracy | n |
 |-----------|-----------|----------|---|
 | easy | ΔL≈30-40 | 100% | 100 |
 | hard | ΔL≈16-23 | 100% | 100 |
@@ -129,19 +131,21 @@ RdBu (diverging, passes through white at center) is hardest — near-neutral mid
 | ±10 | 235/270 | 87.0% |
 | ±20 | 256/270 | 94.8% |
 
-The model is rarely wildly wrong (94.8% within ±20) but rarely precise (25.9% exact). Errors cluster in the ±5-10 range — the model reads the approximate color region correctly but cannot interpolate the colorbar precisely.
+The model is rarely wildly wrong (94.8% within ±20) but rarely precise (25.6% exact). Errors cluster in the ±5-10 range — the model reads the approximate color region correctly but cannot interpolate the colorbar precisely.
+
+**Extended thinking: 56.3%** (+0.4pp) — no improvement. Thinking cannot improve color-to-value interpolation; this is a perceptual precision limitation, not a reasoning one.
 
 ## Cross-Task Patterns
 
 1. **Easy color discrimination is solved.** Distinct hue families (100%), large lightness gaps (100%). The model's color vocabulary is adequate for typical business charts with well-chosen palettes.
 
-2. **The perceptual cliff falls at ΔL≈7-10.** Above ΔL=10: ≥86%. At ΔL=7: 60%. At ΔL=5: 21%. This is a sharp threshold, not a gradual curve. Same-family shades need at least ΔL≈10-15 to be reliably discriminable.
+2. **The perceptual cliff falls at ΔL≈7–10 (HSL lightness).** Above ΔL=10: ≥86%. At ΔL=7: 60%. At ΔL=5: 21%. This is a sharp threshold, not a gradual curve. Same-family shades need at least ΔL≈10–15 to be reliably discriminable. Because HSL lightness is not perceptually uniform, the equivalent CIELAB ΔL* range is roughly 6–12 depending on hue family.
 
 3. **Orange is uniquely robust; green is uniquely fragile.** Across all tasks, orange maintains much higher accuracy at near-threshold and extreme difficulties. Greens collapse earliest. This mirrors the model's apparent color representation geometry — warm hues are more discriminable at small lightness deltas than cool/neutral hues.
 
 4. **More similar bars = harder matching, non-linearly.** Legend-to-bar matching drops from 90% (3 bars) to 62% (5 bars) in the hard condition. Each additional same-family bar compounds confusion.
 
-5. **Heatmap combines three failure modes.** Cell localization, color reading, and colorbar interpolation errors all compound. The gap between 25.9% exact and 87.0% within-±10 suggests the model can identify the approximate color region but lacks precision in continuous scale reading.
+5. **Heatmap combines three failure modes.** Cell localization, color reading, and colorbar interpolation errors all compound. The gap between 25.6% exact and 87.0% within-±10 suggests the model can identify the approximate color region but lacks precision in continuous scale reading.
 
 6. **Colorbar design matters.** Diverging colormaps (RdBu) that pass through white or near-white are harder than sequential colormaps (viridis, YlOrRd). Mid-range ambiguity is a design failure, not just a model failure.
 

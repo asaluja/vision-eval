@@ -102,17 +102,17 @@ Perfect for 1–3 paths. Sharp degradation at 4+ where paths overlap visually.
 - 3-point synthetic: 25% error rate, model says 1 (4 times) or 2 (1 time)
 - 4-point synthetic: 80% error rate, model says 2 (8 of 8 errors)
 - 5-point synthetic: 100% error rate, model says 2 (5), 3 (4), or 1 (1)
-- HF gt=0: 63.5% error rate, model says 1 (456 times) or 2 (304 times)
+- HF gt=0: 63.5% error rate, model says 1 (456 times), 2 (304 times), or 3 (2 times)
 
 The false positive rate increases monotonically with polyline complexity. At 5-point lines, the model *always* reports intersections even when there are none — it appears to interpret visual proximity of line segments as crossing.
 
-**Synthetic vs HF gap for 3-point**: Our synthetic (84.4%) outperforms HF (64.6%) because HF has 1,200 gt=0 instances (vs our 20), and gt=0 is the hardest case. The HF's larger gt=0 sample reveals a stronger false-positive bias than our smaller sample captures.
+**Synthetic vs HF gap for 3-point**: Our synthetic (85.0%) outperforms HF (64.6%) because HF has 1,200 gt=0 instances (vs our 20), and gt=0 is the hardest case. The HF's larger gt=0 sample reveals a stronger false-positive bias than our smaller sample captures.
 
 ---
 
 #### 3. Chart Line Trend Detection
 
-**Prompt fix context:** The original prompt asked about "the overall trend" without specifying which series, yielding 65.2% accuracy. After fixing the prompt to ask about a **specific named series** (e.g., "Is the trend of Revenue increasing or decreasing?"), accuracy jumped to 94.8%. The ambiguity, not the perception, was the primary failure mode. All results below use the fixed prompt.
+**Prompt fix context:** The original prompt asked about "the overall trend" without specifying which series, yielding lower accuracy. After fixing the prompt to ask about a **specific named series** (e.g., "Is the trend of Revenue increasing or decreasing?"), accuracy reached 94.8%. The ambiguity, not the perception, was the primary failure mode. All results below use the fixed prompt.
 
 | Metric | Value |
 |--------|-------|
@@ -180,9 +180,9 @@ Errors concentrate in the **high n_series + low n_categories** corner — many o
 
 3. **Discrete, labeled navigation is solved; continuous path tracing is not.** Diagram decision-following (100%) uses labeled arrows between discrete boxes. Subway path tracing through overlapping colored lines fails at 4+ total connections. The difference is whether the model must visually follow a continuous line vs read a label on a discrete arrow.
 
-4. **Trend detection is strong when the target series is specified (94.8%), but degrades with line clutter.** The original 65.2% result was a prompt ambiguity artifact — "overall trend" was underspecified when multiple series trend in different directions. With a specific series named, accuracy is near-ceiling at 2-4 series (100%) but drops to 81% at 10 series, revealing that trend detection at high visual complexity is fundamentally a path-isolation problem.
+4. **Trend detection is strong when the target series is specified (94.8%), but degrades with line clutter.** The original lower result was a prompt ambiguity artifact — "overall trend" was underspecified when multiple series trend in different directions. With a specific series named, accuracy is near-ceiling at 2-4 series (100%) but drops to 81% at 10 series, revealing that trend detection at high visual complexity is fundamentally a path-isolation problem.
 
-5. **Visual clutter is the universal difficulty axis.** More connections hurt path tracing (90-100% at 2 → 10-40% at 6). More series hurt trend detection (100% at 2-4 → 81% at 10). More line segments hurt intersection counting (84% at 3-point → 18% at 5-point). The common thread: when multiple lines overlap, the model cannot reliably isolate individual paths.
+5. **Visual clutter is the universal difficulty axis.** More connections hurt path tracing (90-100% at 2 → 10-40% at 6). More series hurt trend detection (100% at 2-4 → 81% at 10). More line segments hurt intersection counting (85% at 3-point → 18% at 5-point). The common thread: when multiple lines overlap, the model cannot reliably isolate individual paths.
 
 ## Finetuning Implications
 

@@ -2,11 +2,13 @@
 
 ## Context
 
-Evaluation across 8 perceptual primitives (~15K evals, 35+ JSONL files) reveals that Haiku 4.5's vision failures are not a continuum — they cluster into three mechanistically distinct regimes requiring different training strategies:
+Evaluation across 7 perceptual primitives (~15K evals, 35+ JSONL files) reveals that Haiku 4.5's vision failures are not a continuum — they cluster into three mechanistically distinct regimes requiring different training strategies:
 
-1. **OCR-as-crutch** (value-label conflict 0%, grid counting 50→100% with text): the model reads text instead of perceiving visuals
-2. **Perceptual resolution limits** (path tracing, intersection detection, proximity, color discrimination, dense chart reading): degradation scales with visual complexity along smooth psychometric curves — all clearly in-distribution for practical tasks
-3. **Memorized priors override vision** (logos 1.9% with 99.8% bias alignment, flags 40% with 83% bias, patterned grids 0% on add-anomaly): canonical knowledge short-circuits perception — though logos/flags are largely out-of-distribution for typical VLM use cases
+1. **OCR-as-crutch** (value-label conflict 0%, grid counting 49%→100% with text): the model reads text instead of perceiving visuals
+2. **Perceptual resolution limits** (path tracing, intersection detection, proximity, color discrimination, dense chart reading, pie angular estimation, heatmap interpolation): degradation scales with visual complexity along smooth psychometric curves — all clearly in-distribution for practical tasks
+3. **Memorized priors override vision** (logos 1.9% with 99.8% bias alignment, flags 40% with 83% bias): canonical knowledge short-circuits perception — though logos/flags are largely out-of-distribution for typical VLM use cases
+
+**Extended thinking experiments confirm this taxonomy.** Running with `--thinking --thinking-budget 8000` across 9 tasks showed that thinking only helps annotation conflicts (+15pp, from 75%→90%) — the one task where the failure is reasoning, not perception. Value labels (0%→0%), pie comparison (+1.7pp), heatmap (+0.4pp), and board games (-0.5pp) are all unchanged, confirming these are perceptual limits that reasoning cannot overcome.
 
 Each regime needs a different training lever: SFT to establish new behaviors, DPO to calibrate perceptual judgments and override text reliance, RL to sharpen perceptual strategies. The priority ranking reflects practical impact: OCR-as-crutch silently affects every chart/table task, perceptual limits govern the hardest in-distribution failures, and memorized priors — while dramatic — primarily affect niche tasks (brand logos, flag elements) that rarely arise in production.
 
@@ -14,16 +16,16 @@ Each regime needs a different training lever: SFT to establish new behaviors, DP
 
 ## Training Pipeline: Three Stages
 
-### Stage 1: SFT — Visual Grounding (~300K examples, 2-3 epochs)
+### Stage 1: SFT — Visual Grounding (~330K examples, 2-3 epochs)
 
 **Goal**: Break the OCR dependency. Teach the model to estimate visual quantities from pixel-level cues (gridlines, relative position, bar height) rather than defaulting to text.
 
 | Data Category | Volume | Generator | Purpose |
 |---|---|---|---|
-| Charts WITHOUT value labels | 80K | `charts.py`, `show_values=False` only | Force visual bar/line height estimation |
-| Pie charts WITHOUT % labels | 30K | `pie_charts.py`, `show_percentages=False` | Force angular/proportional estimation (53% baseline) |
-| Charts with WRONG value labels | 40K | `text_visual_conflict.py`, `conflict_value_label` | Teach conflict detection and visual override |
-| Blank grids (no coordinate text) | 30K | `grid_counting.py`, `with_text=False` | Force visual grid-line counting |
+| Charts WITHOUT value labels | 90K | `charts.py`, `show_values=False` only | Force visual bar/line height estimation |
+| Pie charts WITHOUT % labels | 35K | `pie_charts.py`, `show_percentages=False` | Force angular/proportional estimation (53% baseline) |
+| Charts with WRONG value labels | 50K | `text_visual_conflict.py`, `conflict_value_label` | Teach conflict detection and visual override |
+| Blank grids (no coordinate text) | 35K | `grid_counting.py`, `with_text=False` | Force visual grid-line counting |
 | Non-overlapping shape counting | 30K | `counting_shapes.py`, overlap ≤ 0.1, counts 3-12 | Basic counting without perceptual ambiguity |
 | Clear proximity cases | 20K | `touching_circles.py`, dist ∈ {≤0, ≥0.2} | Establish baseline proximity judgment |
 | Color grids (ΔL ≥ 10) | 15K | `color_discrimination.py` | Basic shade discrimination |
@@ -47,42 +49,46 @@ The reintroduction of correct labels is critical — we don't want a model that 
 
 ---
 
-### Stage 2: DPO — Bias Override and Perceptual Calibration (~75K pairs, 1 epoch)
+### Stage 2: DPO — Grounding Calibration (~40K pairs, 1 epoch)
 
-**Goal**: Override memorized priors with visual evidence. Use high-quality preference pairs where the model's biased answer is consistently wrong.
+**Goal**: Calibrate the model's perceptual judgments using high-quality preference pairs. The primary targets are *grounding failures* (trusting wrong text over visual evidence) and *perceptual false positives* (reporting contact/intersection/pattern-match when the visual evidence says otherwise).
 
 | Source | Pairs | Signal Quality | Construction |
 |---|---|---|---|
-| Board game non-canonical dims | 15K | **Excellent** (100% bias alignment, 0 variance) | Chosen: explicit count. Rejected: canonical dim. |
-| Patterned grid add-anomaly | 10K | **Excellent** (0% accuracy) | Chosen: actual count. Rejected: pattern-expected count. |
-| Olympic-layout circles (count ≠ 5) | 8K | Good (22% bias rate) | Chosen: correct count. Rejected: "5". |
-| Touching circles at threshold | 12K | Good (0% at threshold distances) | Chosen: "No" (separated). Rejected: "Yes" (touching). |
-| Color grid ΔL=5-10 | 10K | Good (18-88% accuracy) | Chosen: correct cell. Rejected: wrong cell. Per-family balanced. |
-| Value-label conflict | 10K | **Excellent** (0% accuracy) | Chosen: visual estimate. Rejected: text label value. |
-| Annotation conflict (gap < 15) | 5K | Moderate (75% accuracy) | Chosen: actual max bar. Rejected: annotated bar. |
+| Value-label conflict | 12K | **Excellent** (0% accuracy, 100% text-reliant) | Chosen: visual estimate with gridline reasoning. Rejected: text label value. |
+| Touching circles at threshold | 12K | Good (0% at near-threshold distances) | Chosen: "No" (separated). Rejected: "Yes" (touching). |
+| Color grid ΔL=5-10 | 10K | Good (21-86% accuracy) | Chosen: correct cell. Rejected: wrong cell. Per-family balanced, weighted toward greens/purples. |
+| Annotation conflict (gap < 15) | 5K | Moderate (75% baseline, 90% with thinking) | Chosen: actual max bar with visual reasoning. Rejected: annotated bar. |
 | Path following overcounts | 5K | Good (97% of errors are overcounts) | Chosen: target path count. Rejected: total path count. |
 
-**Extended thinking doesn't help bias override.** Re-running board games and patterned grids with `--thinking --thinking-budget 2048` produced no improvement (+1.6pp grids, -0.5pp boards). This confirms the failure is perceptual, not reasoning — the model can't see the deviation from the memorized pattern regardless of how much it thinks. Implication: DPO is the right lever here, not chain-of-thought. The model needs to learn to *count* rather than *recall*, and that requires training signal, not inference-time compute.
+**Why value-label conflict is the primary DPO target**: 0% accuracy with 100% text-reliance across all configurations means every instance produces a perfectly clean preference pair — the chosen response demonstrates visual estimation ("comparing bar height to y-axis gridlines, it reaches ~82"), while the rejected response reads the wrong label ("{55}"). This is also the most practically relevant failure: wrong labels in recycled slide decks and edited reports are common in real-world charts. Extended thinking confirms this is not a reasoning problem (0%→0% with thinking) — the model needs behavioral retraining, not more thinking time.
 
-**Why board games are the single best DPO source**: 100% bias alignment with zero variance across 400 evaluations means every non-canonical instance produces a perfectly clean preference pair — no noise, no ambiguity, no edge cases. The chosen response always includes explicit counting ("1, 2, 3, 4, 5, 6, 7 — that's 7 rows"), teaching the model to count before answering. The rejected response always pattern-matches ("chess board = 8 rows").
+**Annotation conflict nuance**: At 75% baseline accuracy, annotation conflict has moderate DPO signal. However, extended thinking improves it to 90% (+15pp), indicating this is partially a reasoning problem. DPO pairs should focus on the remaining hard cases (value gap < 15 between true max and annotated bar) where even thinking fails. The chosen response should include explicit comparison reasoning: "Bar A reaches ~46, Bar B reaches ~44. Despite the 'Highest' annotation on B, A is taller."
 
-**Critical safeguard**: Include canonical-dimension boards (8×8 chess, 19×19 Go) in the training set where both chosen and rejected demonstrate counting — the chosen response counts and gets the canonical number, the rejected gets it wrong. This prevents the model from learning "always say non-canonical."
+**Note on logos/flags**: These tasks produce extremely clean DPO pairs (logos: 99.8% bias alignment, flags: 83%) but are excluded from the training budget because the skills they exercise — counting elements in brand logos, counting stars/stripes on flags — rarely arise in production VLM deployments. They remain valuable as *evaluation benchmarks* for measuring bias override capability, even if not prioritized for training.
 
 ---
 
-### Stage 3: RL with Verifiable Rewards (~175K episodes, 500-1000 steps × batch 256)
+### Stage 3: RL with Verifiable Rewards (~225K episodes, 500-1000 steps × batch 256)
 
-**Goal**: Sharpen perceptual strategies via reward-shaped exploration. All tasks here have exactly computable ground truth.
+**Goal**: Sharpen perceptual strategies via reward-shaped exploration. All tasks here have exactly computable ground truth and represent clearly in-distribution VLM use cases.
 
 | Task | Volume | Reward Function | Curriculum |
 |---|---|---|---|
 | Overlapping shape counting | 50K | `R=1.0` exact, `0.5` if ±1, `0.0` else | overlap 0.1 → 0.5 |
 | Pie value estimation (no labels) | 20K | `R=1.0` within ±2pp, `0.5` within ±5pp, `0.0` else | n_slices 3 → 8 |
 | Pie slice comparison (no labels) | 15K | `R=1.0` correct, `0.0` else | gap between top-2 slices: 15pp → 3pp |
-| Path following (distractor) | 40K | `R=1.0` exact, `0.0` else (answer space is 1-3) | total_connections 2 → 6 |
-| Line intersection | 30K | `R=1.0` exact, `0.3` if ±1, `+0.2` bonus if GT=0 ∧ pred=0 | 3-point → 5-point |
-| Dense chart value reading | 40K | `R=1.0` within tolerance, `0.5` within 2× tolerance | n_series 3 → 10 |
+| Path following (distractor) | 45K | `R=1.0` exact, `0.0` else (answer space is 1-3) | total_connections 2 → 6 |
+| Line intersection | 35K | `R=1.0` exact, `0.3` if ±1, `+0.2` bonus if GT=0 ∧ pred=0 | 3-point → 5-point |
+| Dense chart value reading | 50K | `R=1.0` within tolerance, `0.5` within 2× tolerance | n_series 3 → 10 |
+| Line series comparison | 15K | `R=1.0` correct, `0.0` else | y_max auto → 200, gap 10 → 1 |
+| Trend detection (dense) | 15K | `R=1.0` correct, `0.0` else | n_series 4 → 10, n_categories 3 → 10 |
 | Small rotated numbers | 15K | `R=1.0` exact, `0.0` else | font 20 → 10 |
+| Heatmap value reading | 15K | `R=1.0` within tolerance, `0.5` within 2× tolerance | grid 4×4 → 6×6, sequential → diverging colormaps |
+
+Heatmap added to Stage 3 based on extended thinking results (56% baseline, 0pp improvement with thinking), confirming this is a perceptual interpolation task that needs RL training, not reasoning. Curriculum progresses from smaller grids with sequential colormaps (viridis) to larger grids with diverging colormaps (RdBu).
+
+Line series comparison and trend detection are added as separate RL tasks because they exercise distinct skills not covered by "dense chart value reading" (which trains value extraction, not relative judgment). Line comparison at fixed y-axis (65% at gap=1/y=200) requires the model to discriminate small height differences when the axis compresses them. Trend detection at 10 series (81%) is fundamentally a path-isolation problem — the model must trace a single named series through overlapping lines to determine its direction.
 
 **Key design choices**:
 - **Partial credit for counting** (0.5 for ±1): prevents reward sparsity at high counts where exact match is genuinely hard
@@ -102,9 +108,11 @@ This is the highest-leverage failure because it's not an isolated task — it's 
 | Finding | Accuracy | What It Proves |
 |---|---|---|
 | Value-label conflict | 0% (100% text-reliant) | Model reads label, never estimates bar height |
+| Value-label with thinking | 0% (still 100% text-reliant) | Reasoning cannot override — this is behavioral, not cognitive |
 | Grid counting with/without text | 100% vs 49% | 51pp gap = model reads coordinates, doesn't count lines |
 | Line chart show_values=True vs False | 72% vs 80% | Labels *hurt* because model grabs wrong-series label |
-| Chart axis label reading | 100% at font 7px | Model can OCR tiny text — this is its primary strategy |
+| Pie chart: 100% with % labels vs 53% without | Same pattern extends to angular estimation — model reads text, doesn't estimate |
+| Annotation conflict | 75% baseline, 90% with thinking | Partially reasoning — thinking helps resist misleading annotations |
 
 ### Sample Training Data Generation
 
@@ -202,8 +210,14 @@ The reward function for visual grounding has three deliberate design choices:
 | Chart value (no labels, 8-10 series) | ~50% | 55-65% | 65-75% |
 | Pie value estimate (no % labels) | 53% | 65-75% | 70-80% |
 | Pie slice comparison (no % labels) | 73% | 80-85% | 85-90% |
+| Heatmap value reading | 56% | 60-65% | 65-75% |
+| Line comparison (gap=1, y=200) | 65% | — | 80-90% |
+| Trend detection (10 series) | 81% | — | 90-95% |
+| Path following (distractor, 4-6 conn.) | ~35% | — | 55-65% |
+| Intersection counting (5-pt lines) | 18% | — | 35-50% |
+| Annotation conflict | 75% | — | 90-95% |
 
-The residual gap (not reaching 100%) is genuine visual estimation error — even with perfect grounding, interpolating between gridlines or estimating angular proportions has irreducible noise. Pie charts have a wider residual gap than bars because angular estimation is perceptually harder than height estimation.
+The residual gap (not reaching 100%) is genuine visual estimation error — even with perfect grounding, interpolating between gridlines or estimating angular proportions has irreducible noise. Pie charts have a wider residual gap than bars because angular estimation is perceptually harder than height estimation. Path following and intersection counting have lower ceilings because the underlying path-tracing skill is fundamentally limited by visual clutter. Annotation conflict has a high ceiling (90% already achievable with thinking alone) — DPO should push remaining hard cases.
 
 ---
 
@@ -211,14 +225,15 @@ The residual gap (not reaching 100%) is genuine visual estimation error — even
 
 | Primitive | Primary Stage | SFT | DPO | RL | Expected Lift |
 |---|---|---|---|---|---|
-| **Text-Visual Consistency** (grounding) | Stage 1 | 70% | 20% | 10% | 0% → 75% (value-label) |
-| **Prior Bias Override** | Stage 2 | 10% | 80% | 10% | 60% → 90% (board games) |
+| **Prior Bias Override** (incl. grounding) | Stages 1+2 | 50% | 30% | 20% | 0% → 75% (value-label); 75% → 92% (annotation) |
 | **Counting/Enumeration** | Stage 3 | 30% | 10% | 60% | 62% → 80% (overlapping shapes) |
-| **Line/Path Following** | Stage 3 | 20% | 10% | 70% | 52% → 70% (distractor paths) |
-| **Spatial Localization** | Stages 1+3 | 50% | 0% | 50% | 75% → 85% (dense charts) |
-| **Relative Comparison** | Stage 2 | 20% | 60% | 20% | 60% → 80% (touching circles) |
-| **Color Discrimination** | Stage 2 | 20% | 60% | 20% | 18% → 45% (extreme ΔL) |
-| **Text Reading** | Stage 1 | 80% | 0% | 20% | 0% → 40% (font10+rot90 numbers) |
+| **Line/Path Following** | Stage 3 | 15% | 10% | 75% | 52% → 65% (distractor paths, HF) |
+| **Spatial Localization** | Stages 1+3 | 45% | 0% | 55% | 51% → 65% (dense chart values) |
+| **Relative Comparison** | Stage 2 | 20% | 55% | 25% | 8% → 40% (near-threshold proximity) |
+| **Color Discrimination** | Stages 2+3 | 20% | 45% | 35% | 21% → 45% (extreme ΔL); 56% → 70% (heatmap) |
+| **Text Reading** | Stage 1 | 80% | 0% | 20% | 20% → 45% (font=8 numbers) |
+
+Note: Prior Bias Override now encompasses both memorized-prior failures (logos, flags) and text-grounding failures (value labels, annotations). The memorized-prior tasks (logos, flags) are not targeted for training — they serve as evaluation benchmarks for measuring bias override capability. The text-grounding tasks (value labels, annotations) receive the majority of the training budget within this primitive, as they represent the highest-leverage practical improvement.
 
 ---
 
@@ -227,16 +242,19 @@ The residual gap (not reaching 100%) is genuine visual estimation error — even
 Reserve 20% of parameter space per generator for held-out test:
 
 - Charts: hold out n_categories=9, n_series=7
-- Board games: hold out 10×10 chess, 17×17 Go (novel dimensions beyond ±1)
 - Touching circles: hold out dist=0.035, dist=0.075 (interpolation)
 - Color grids: hold out "purples" family entirely
+- Heatmaps: hold out 6×6 RdBu (hardest combination)
 - Path following: hold out total_connections=5 with target=2
 - Pie charts: hold out n_slices=7 (interpolation between trained 6 and 8)
+- Line intersection: hold out 4-point lines (interpolation between trained 3-point and 5-point)
+- Logos/flags: reserve entirely as held-out eval benchmarks (not trained on, used to measure generalization of bias override)
 
 **Regression monitoring**: After each stage, run full eval via `python run_phase1.py --eval-only --workers 10` across all tasks. Critical regression gates:
 - Table cell lookup must remain 100%
 - Diagram decision following must remain 100%
 - Simple bar chart (with correct labels) must remain ≥98%
+- Title trend / legend color conflict must remain ≥95%
 
 ---
 
@@ -245,11 +263,12 @@ Reserve 20% of parameter space per generator for held-out test:
 | Risk | Probability | Impact | Mitigation |
 |---|---|---|---|
 | Catastrophic forgetting on solved tasks | Medium | High | 70K regularization examples in Stage 1; regression gates after each stage |
-| DPO over-correction (always say non-canonical) | Low-Medium | Medium | Include canonical boards in chosen set; both chosen/rejected demonstrate counting |
-| Vision encoder resolution is the hard limit | High for proximity/color | Low (we set realistic targets) | Focus budget on LM-side failures (grounding, bias); accept ceilings on encoder-limited tasks |
+| DPO over-correction on value labels (ignores all text) | Low-Medium | Medium | Stage 1 curriculum reintroduces correct labels in weeks 5-6; include correct-label charts where chosen response reads the label |
+| Vision encoder resolution is the hard limit | High for proximity/color/heatmap | Low (we set realistic targets) | Focus budget on LM-side failures (grounding, text reliance); accept ceilings on encoder-limited tasks |
 | CoT training increases latency 3-5× | Medium | Medium | Post-training distillation to compress reasoning; or RL to reward concise correct responses |
 | Synthetic rendering artifacts cause overfitting | Low-Medium | Medium | Diversify backends (matplotlib, Plotly, PIL); augment with JPEG compression, DPI jitter, color noise |
 | Unknown encoder architecture | Certain | Variable | If possible, finetune encoder jointly; if not, accept encoder-limited ceilings |
+| Thinking-solvable tasks over-trained with DPO | Low | Low | Annotation conflicts (reasoning failures) may benefit more from thinking/CoT than DPO; allocate DPO budget to gap<15 hard cases only |
 
 ---
 

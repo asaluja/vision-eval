@@ -1,71 +1,28 @@
 # Prior Bias Override — Evaluation Summary
 
 ## Primitive Definition
-Can the model report what it actually sees, overriding memorized defaults? This tests whether the model defaults to canonical knowledge (standard dice patterns, canonical flag stripe counts, expected logo elements) rather than counting or measuring the actual visual content.
+Can the model report what it actually sees, overriding both memorized defaults and misleading text annotations? This tests two failure modes: (1) the model defaults to canonical knowledge (logo element counts, flag stripe counts) rather than counting the actual visual content, and (2) the model defers to text annotations (value labels, chart annotations) rather than grounding in the visual rendering.
 
 ## Key Finding
-**Prior bias dominates all three tasks. Logos is the most extreme: 1.9% accuracy with 99.8% bias alignment — the model almost never counts logo elements, it just retrieves canonical knowledge (Nike swoosh = 1 curve). Flags are 40% accurate with 83% bias alignment. Patterned grid add-anomalies are 0% — the model cannot see an extra shape when the surrounding pattern says it shouldn't be there. Extended thinking does not help — these are perceptual failures, not reasoning failures.**
+**The model fails to ground in visual content in two distinct ways. For logos, prior bias is near-total: 1.9% accuracy with 99.8% bias alignment — the model retrieves canonical knowledge instead of counting. For chart value labels, text-reliance is absolute: 0% accuracy when wrong numbers are placed on bars — the model reads the label, never the bar height. Both are "trusting something other than the image" failures, but the prior path (logos/flags) and the text path (value labels) are independent mechanisms.**
 
 ## Tasks Evaluated
 
 ### Ceiling Tasks
-None. Every task shows significant bias-induced errors — this is the only primitive with zero ceiling tasks.
+
+#### Title Trend Conflict (`conflict_title_trend`, Local)
+
+**Overall: 100%** (40/40) — text-reliant: **0%**
+
+The model consistently reads the visual trend and ignores the contradictory title. Responses often explicitly acknowledge the contradiction ("Looking at the chart titled 'Rising Sales Over Time,' I can see three data points going down..."). The title has zero influence.
+
+#### Legend Color Conflict (`conflict_legend_color`, Local)
+
+**Overall: 100%** (40/40) — text-reliant: **0%**
+
+The legend maps colors to the wrong series names. The model reads bar values by spatial position and color, answering correctly regardless of legend labels. This suggests the model resolves series identity via color + position, not legend text.
 
 ### Degrading Tasks
-
-#### Patterned Grid Anomaly Detection (`patterned_grid`)
-
-A grid where every cell contains a pattern of shapes (dice dots or tally marks) following a spatial rule. One cell is modified (+1 or −1 shape). Task: count the shapes in the anomalous cell.
-
-**Overall: 15.5%** (39/252 local)
-
-**By anomaly type:**
-
-| Anomaly | Accuracy | n |
-|---------|----------|---|
-| Add (+1 shape) | **0.0%** | 126 |
-| Remove (−1 shape) | **31.0%** | 126 |
-
-**By grid_size × anomaly:**
-
-| Grid | Add | Remove |
-|------|-----|--------|
-| 6×6 | 0% | 54.8% |
-| 8×8 | 0% | 26.2% |
-| 10×10 | 0% | 11.9% |
-
-**The model never detects add-anomalies (0/126).** When an extra shape is added, the model consistently reports the anomalous count without recognizing it as anomalous — it counts what's there but doesn't compare against the surrounding pattern.
-
-**Remove-anomaly accuracy degrades sharply with grid size.** At 6×6 the model detects 55% of removed shapes. At 10×10, only 12%. Larger grids reinforce the expected pattern more strongly, making deviations harder to detect.
-
-**By grid_type:**
-
-| Type | Accuracy |
-|------|----------|
-| Dice | 13.5% |
-| Tally | 17.5% |
-
-Tally marks are slightly easier — more distinct spatial arrangements make the anomaly marginally more visible.
-
-**Error patterns:**
-
-For add anomaly (GT=1 for all 126 instances):
-- The model never reports the correct count (GT=1). Instead, it overcounts significantly: 43.7% say 3, 38.9% say 4, with a tail up to 8. Only 1.6% say the cell-specific canonical (2).
-- The model appears to apply the *surrounding* cells' visual count (3-4 shapes) to the anomalous cell rather than counting the cell's single actual shape. The anomalous cell is effectively invisible — the model reads it as "like the others."
-
-For remove anomaly (cell has canonical−1 shapes):
-- At canonical=2: model correctly answers 1 in 72% (easily visible gap)
-- At canonical=3: model answers 2 in 83% (correct counting overrides prior)
-- At canonical=4: model answers 3 in 75% — still partially perceiving the reduction
-
-**Generated vs HF comparison:**
-
-| Source | Dice | Tally | Overall |
-|--------|------|-------|---------|
-| Generated | 13.5% | 17.5% | 15.5% |
-| HF (biased) | 14.9% | 31.5% | 23.2% |
-
-HF performs somewhat better on tally marks (31.5% vs 17.5%), likely due to rendering differences — HF tally marks may have more visual contrast or spacing that makes deviations more salient.
 
 #### Flag Element Counting (`flags`, HF VLMs-are-Biased)
 
@@ -93,37 +50,74 @@ This is the strongest prior bias signal in the entire eval. The task asks how ma
 - Shoe logos (Nike/Adidas): GT=2+ visible elements → model answers canonical count in 99.3% of errors (135/136); 1 Shoe Logos error was non-bias-aligned (model answered 2, canonical was 3)
 - Car logos: 0% accuracy, 100% bias aligned (270/270 errors)
 
-405 of 406 errors (99.8%) are the exact canonical biased answer; one Shoe Logos error was non-bias-aligned (Adidas shoe, model answered 2 stripes, canonical=3, GT=4). The model's visual encoder rarely engages for logos — it pattern-matches the brand and outputs the memorized element count. This is qualitatively different from patterned grid (where the model at least attempts to count) — here it almost never counts at all.
+405 of 406 errors (99.8%) are the exact canonical biased answer; one Shoe Logos error was non-bias-aligned (Adidas shoe, model answered 2 stripes, canonical=3, GT=4). The model's visual encoder rarely engages for logos — it pattern-matches the brand and outputs the memorized element count.
 
-#### Extended Thinking Experiment
+#### Value Label Conflict (`conflict_value_label`, Local)
 
-Re-ran patterned grid with extended thinking (`--thinking --thinking-budget 2048`) to test whether step-by-step reasoning helps override the memorized pattern prior.
+**Overall: 0%** (0/40) — text-reliant: **100%**
 
-| Task | Baseline | Thinking | Delta |
-|------|----------|----------|-------|
-| Patterned grid | 15.5% | 17.1% | +1.6pp |
+The model **always** reads the text label above the bar, never the actual bar height. Even when the prompt explicitly says "based on the bar heights shown," the response is the wrong label value with no visual reasoning.
 
-**Extended thinking makes no meaningful difference.** Add-anomalies remain at 0%. The failure is perceptual — if the visual encoder doesn't register the extra/missing shape as distinct from the surrounding pattern, no reasoning step can recover it.
+Example: Bar visually at height 52, labeled "36". Prompt: "Based on the bar heights shown, read the value of Product B." Response: `{36}`.
+
+| n_categories | Accuracy | Text-Reliant |
+|---|---|---|
+| 3 | 0% | 100% |
+| 4 | 0% | 100% |
+| 5 | 0% | 100% |
+| 6 | 0% | 100% |
+
+No variation by number of categories — the failure is absolute. **Extended thinking: still 0%** — thinking cannot override OCR-level text reliance.
+
+#### Annotation Conflict (`conflict_annotation`, Local)
+
+**Overall: 75%** (30/40) — text-reliant: **25%**
+
+A red "Highest" arrow and label points to a non-max bar. The model is fooled 25% of the time, and errors strongly correlate with the **value gap** between the true max and the annotated bar:
+
+| Condition | Mean gap (true max − annotated) |
+|---|---|
+| Correct responses | 29.7 |
+| Error responses | 11.3 |
+
+When the true max is clearly taller (gap >= 20), the model usually resists the annotation (88.5% accuracy). When bars are similar in height (gap < 15), the annotation tips the model toward the wrong answer (25% accuracy).
+
+**Extended thinking: 90%** (+15pp). Thinking gives the model space to reason past the misleading annotation — the largest improvement of any thinking experiment in this eval. The remaining 10% errors likely occur at very small gaps where the visual evidence is genuinely ambiguous.
 
 ## Cross-Task Patterns
 
-1. **Bias alignment scales with prior strength.** Logos (99.8% bias aligned, 1.9% accurate) > flags (83% bias aligned, 40% accurate) > patterned grid add-anomalies (near-100% bias aligned, 0% accurate). The stronger and more specific the memorized prior (Nike swoosh = 1 curve), the more completely it overrides visual evidence.
+1. **Two independent "trust something other than the image" mechanisms.** Logos/flags fail via memorized priors (the model recognizes the brand/country and retrieves canonical element counts). Value labels fail via text-reliance (the model reads the number placed on the bar instead of estimating bar height). These are distinct pathways — prior bias doesn't involve any text in the image, and value-label reliance doesn't involve any memorized knowledge.
 
-2. **Logos represent complete vision bypass.** The model doesn't just weight the prior more heavily — it appears to skip visual counting entirely. 100% bias alignment with 0% accuracy on car logos means the visual encoder output is irrelevant. It's pattern-matching "BMW logo" and returning canonical ring count from memory.
+2. **Bias/text-reliance scales with signal specificity.** Logos (99.8% bias aligned) > flags (83%) > annotations (25% text-reliant) > titles/legends (0%). The more specific and directly positioned the misleading signal (number on a bar, brand name on a logo), the more completely it overrides visual evidence. Diffuse signals (chart title, legend position) are ignored.
 
-3. **The add/remove asymmetry in patterned grids.** For add anomalies (GT=1), the model overcounts to 3-4 (the surrounding cells' visual count) rather than reading the anomalous cell's single shape — the anomalous cell is effectively invisible. For remove anomalies, the model more often reads the actual reduced count, possibly because a missing shape creates a visible gap. The failure is worse for additions than removals.
+3. **Logos represent complete vision bypass.** The model doesn't weight the prior more heavily — it appears to skip visual counting entirely. 100% bias alignment with 0% accuracy on car logos means the visual encoder output is irrelevant.
 
-4. **Grid context reinforces bias proportionally to grid size.** Remove-anomaly accuracy drops from 55% at 6×6 to 12% at 10×10. More surrounding cells showing the canonical pattern strengthen contextual expectation, making the anomaly harder to detect.
+4. **Value labels represent complete text bypass of visual estimation.** The model's "value reading" is OCR of label text, not visual estimation of bar height. This is confirmed by the 0% value-label accuracy combined with 100% legend-color accuracy (which also has labels, but correct ones).
 
-5. **Extended thinking cannot overcome perceptual failures.** +1.6pp on patterned grid with thinking budget. The model cannot reason its way past a visual signal it never received. These failures are upstream of reasoning.
+5. **The model can reason past contradictions at the semantic level.** Title trend responses show the model explicitly noting the title, reading the data points, and reasoning about direction. But this same reasoning does not override value labels — the failure is at the character level (reading the number), not the semantic level.
 
-6. **All tasks produce high-quality DPO pairs.** Every bias-aligned error is a clean (correct visual answer, biased memorized answer) preference pair with zero ambiguity about which is preferred.
+6. **Annotations are persuasive only when visual evidence is weak.** The annotation error pattern (mean gap 11 for errors vs 30 for correct) shows the model uses annotations as tiebreakers when it can't easily determine the answer visually. This is arguably rational behavior that degrades when annotations are wrong.
+
+7. **Extended thinking helps only annotation conflicts (+15pp), not value labels or priors.** Thinking improves annotation resistance (75%→90%) by giving the model space to reason past the misleading arrow. But it cannot break the value-label wall (0%→0%) or the logo/flag prior — these failures are perceptual (OCR, pattern-matching), not reasoning deficits. This confirms the distinction: annotations are a reasoning problem (the model sees the right answer but is swayed), while value labels and priors are perception problems (the model never sees the right answer).
+
+## Real-World Likelihood of Text-Visual Conflicts
+
+| Conflict Type | Real-World Likelihood | How It Happens | Model Accuracy |
+|---|---|---|---|
+| Wrong title | Most common | Data updated, title not refreshed; editorial spin | 100% (solved) |
+| Wrong value labels | Common | Hardcoded text annotations in PowerPoint not refreshed after data update | 0% (total failure) |
+| Wrong annotations | Moderate | Callout arrows left pointing at old element after data changes | 75% (partial) |
+| Swapped legend | Rare | Auto-generated by plotting libraries; almost never wrong | 100% (solved) |
+
+The model's worst failure (value labels, 0%) is the second most common real-world error.
 
 ## Finetuning Implications
 
-- **Logos are the highest-density DPO source.** 406/414 instances (98%) produce preference pairs with 99.8% bias alignment (405/406 errors bias-aligned; 1 Shoe Logos error is not bias-aligned). The rejected answer is almost always the canonical element count; the preferred answer is the actual visual count.
+- **Logos are the highest-density DPO source for prior bias.** 406/414 instances (98%) produce preference pairs with 99.8% bias alignment. The rejected answer is almost always the canonical element count; the preferred answer is the actual visual count.
+- **Value-label grounding is the highest-priority text-reliance target.** Train on charts where the model must estimate bar/line values from the visual rendering, with no text labels or with deliberately wrong labels.
 - **Flag training covers two distinct biases.** Star count (12 vs 13) and stripe count each have their own canonical prior. Both sub-topics need independent training coverage.
-- **Add-anomaly training for patterned grids.** 0% accuracy = every instance is a training opportunity. The model needs to learn single-cell counting independent of surrounding pattern context.
-- **Grid size is a natural curriculum axis.** Start at 6×6 (remove-anomalies 55% correct, closest to learnable) and progressively increase to 10×10 (12%).
-- **Chain-of-thought for logo/flag tasks:** "Count only what is visible in this image, do not rely on what you know about this brand/country." Without this instruction, the model retrieves rather than perceives.
 - **Car logos need dedicated attention.** 0% accuracy suggests the car logo prior is exceptionally strong. May need higher learning rate or more examples relative to shoe logos (5.6% baseline).
+- **RL reward signal for value labels**: Exact match to the true visual value (bar height), not the displayed label.
+- **Curriculum for annotations**: Start with large value gaps (easy to override the annotation), progressively decrease the gap. The model already resists annotations at gap >= 20; train it to resist at gap < 10.
+- **Title/legend conflicts are solved** — no finetuning needed for these.
+- **Chain-of-thought prompting may help both failure modes:** "Count only what is visible" for logos/flags; "Estimate the value from the bar height, ignoring any text labels" for value labels. Without explicit instructions, the model retrieves/reads rather than perceives.

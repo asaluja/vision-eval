@@ -3,9 +3,9 @@ from figures.error_composite import make_error_composite
 
 cases = [
     {
-        "image": "generate/images/relative_comparison/comp_bar_4_d1_g1_2.png",
+        "image": "generate/images/relative_comparison/comp_bar_4_d1_g0_2.png",
         "gt": "D taller (diff=1)",
-        "model": "B",
+        "model": "A",
         "caption": "1-unit bar diff is below resolution",
     },
     {
@@ -15,10 +15,10 @@ cases = [
         "caption": "r=0.10: always-touching bias up to 10px",
     },
     {
-        "image": "generate/images/touching_circles/touch_d0.05_r0.2_ahorizontal_s512_0.png",
-        "gt": "Not touching (5px gap)",
-        "model": "Yes, touching",
-        "caption": "r=0.20: gap below 12px threshold",
+        "image": "generate/images/pie_charts/pie_value_n3_3.png",
+        "gt": "Product A (largest slice)",
+        "model": "Product C",
+        "caption": "Pie: 73% — wrong even when largest slice is obvious",
     },
 ]
 

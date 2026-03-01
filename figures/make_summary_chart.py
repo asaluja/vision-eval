@@ -12,15 +12,17 @@ data = [
     # Counting / Enumeration
     ("Counting", "Chart bars/series/lines/rows/nodes/slices (6 tasks)", 0.99, 1636),
     ("Counting", "Circles (counts 5-9, gen)", 0.90, 50),
-    ("Counting", "Nested squares (depth 2-5)", 0.85, 306),
-    ("Counting", "HF circles (counts 5-9)", 0.66, 480),
-    ("Counting", "Grid counting (blank)", 0.62, 638),
+    ("Counting", "Nested squares (depth 2-5, gen)", 0.883, 60),
+    ("Counting", "Nested squares (depth 2-5, VAB2)", 0.842, 240),
+    ("Counting", "VAB2 circles (counts 5-9)", 0.66, 480),
     ("Counting", "Pentagons (counts 5-9, gen)", 0.60, 250),
+    ("Counting", "Grid counting (blank, VAB2)", 0.648, 528),
+    ("Counting", "Grid counting (blank, gen)", 0.49, 100),
 
     # Spatial Localization
     ("Spatial", "Table cell / diagram / bar / pie (labeled)", 1.00, 904),
     ("Spatial", "Grouped bar value (2-3 series)", 0.97, 128),
-    ("Spatial", "Circled letter (HF)", 0.82, 624),
+    ("Spatial", "Circled letter (VAB2)", 0.82, 624),
     ("Spatial", "Line chart value (5+ series)", 0.65, 384),
     ("Spatial", "Pie value (no % labels)", 0.53, 60),
     ("Spatial", "Grouped bar value (9-10 series)", 0.51, 128),
@@ -28,8 +30,10 @@ data = [
     # Line / Path Following
     ("Line/Path", "Diagram decision following", 1.00, 450),
     ("Line/Path", "Trend detection (named series)", 0.95, 576),
-    ("Line/Path", "Intersection counting (3-pt lines)", 0.65, 3660),
-    ("Line/Path", "Path counting (distractor mode)", 0.53, 800),
+    ("Line/Path", "Intersection counting (3-pt, gen)", 0.85, 60),
+    ("Line/Path", "Intersection counting (3-pt, VAB2)", 0.646, 3600),
+    ("Line/Path", "Path tracing (distractor, gen)", 0.56, 80),
+    ("Line/Path", "Path tracing (distractor, VAB2)", 0.517, 720),
     ("Line/Path", "Intersection counting (5-pt lines)", 0.18, 50),
 
     # Relative Comparison
@@ -54,16 +58,13 @@ data = [
     ("Text/OCR", "Numbers (font=8)", 0.20, 40),
 
     # Prior Bias Override
-    ("Prior Bias", "Flags (HF)", 0.40, 240),
-    ("Prior Bias", "Patterned grid (remove anomaly)", 0.31, 126),
-    ("Prior Bias", "Logos (shoe, HF)", 0.056, 144),
-    ("Prior Bias", "Patterned grid (add anomaly)", 0.00, 126),
-    ("Prior Bias", "Logos (car, HF)", 0.00, 270),
-
-    # Visual-Textual Consistency
-    ("Grounding", "Title trend / legend color conflict", 1.00, 80),
-    ("Grounding", "Annotation conflict", 0.75, 40),
-    ("Grounding", "Value label conflict", 0.00, 40),
+    ("Prior Bias", "Title trend / legend color conflict", 1.00, 80),
+    ("Prior Bias", "Annotation conflict", 0.75, 40),
+    ("Prior Bias", "Flags -- stars (VAB2)", 0.455, 156),
+    ("Prior Bias", "Flags -- stripes (VAB2)", 0.298, 84),
+    ("Prior Bias", "Logos (shoe, VAB2)", 0.056, 144),
+    ("Prior Bias", "Value label conflict", 0.00, 40),
+    ("Prior Bias", "Logos (car, VAB2)", 0.00, 270),
 ]
 
 # ---------- colors per primitive ----------
@@ -75,11 +76,10 @@ COLORS = {
     "Color":      "#59A14F",
     "Text/OCR":   "#EDC948",
     "Prior Bias": "#B07AA1",
-    "Grounding":  "#FF9DA7",
 }
 
 # ---------- build figure ----------
-fig, ax = plt.subplots(figsize=(10, 12))
+fig, ax = plt.subplots(figsize=(10, 13))
 
 # Sort: group by primitive (in order above), within each group descending accuracy
 primitives_order = list(dict.fromkeys(d[0] for d in data))  # preserve insertion order

@@ -18,7 +18,10 @@ def make_error_composite(
 
     Each case dict must have keys: image, gt, model, caption.
     """
-    fig, axes = plt.subplots(1, 3, figsize=figsize)
+    n = len(cases)
+    fig, axes = plt.subplots(1, n, figsize=figsize)
+    if n == 1:
+        axes = [axes]
 
     for ax, case in zip(axes, cases):
         img = mpimg.imread(case["image"])

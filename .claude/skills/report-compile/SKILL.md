@@ -1,6 +1,6 @@
 ---
 name: report-compile
-description: Compile all 8 primitive summaries into a single HTML report for Google Docs
+description: Compile all 7 primitive summaries into a single HTML report for Google Docs
 ---
 
 Compile all primitive summaries into a single condensed HTML report at `report.html` (project root).
@@ -9,15 +9,14 @@ Compile all primitive summaries into a single condensed HTML report at `report.h
 
 ### 1. Read all summaries
 
-Read all 8 files in `summaries/`:
+Read all 7 files in `summaries/`:
 - `counting_enumeration_summary.md`
 - `spatial_localization_summary.md`
 - `line_path_following_summary.md`
 - `relative_comparison_summary.md`
 - `color_discrimination_summary.md`
 - `text_reading_summary.md`
-- `prior_bias_override_summary.md`
-- `text_visual_consistency_summary.md`
+- `prior_bias_override_summary.md` (includes visual-textual consistency: value label, title trend, legend color, and annotation conflicts)
 
 ### 2. Update and regenerate the summary chart
 
@@ -29,14 +28,22 @@ Read `figures/make_summary_chart.py`. Update the `data` array to reflect the cur
 
 This regenerates `figures/accuracy_summary.png`.
 
+### 2.5. Chart data rules
+
+When updating the `data` array in `make_summary_chart.py` or writing body text:
+
+1. **Use "VAB2" not "HF"** in all rendered labels. "VAB2" stands for "VLMs Are Blind/Biased" and refers to the HuggingFace benchmark datasets. Never use "HF" in chart labels or report body text.
+2. **Never combine gen + VAB2 into a single chart row.** If a task has both generated and VAB2 data, they must appear as separate rows with distinct labels (e.g., `"Nested squares (depth 2-5, gen)"` and `"Nested squares (depth 2-5, VAB2)"`).
+
 ### 3. Write per-section bullets
 
-For each of the 8 primitives, write bullets following these rules:
+For each of the 7 primitives, write bullets following these rules:
 
 - **1 "Solved" bullet**: ceiling tasks with near-100% accuracy. Use the `<span class="regime-label solved">Solved</span>` tag. If no ceiling tasks exist, use `<span class="regime-label broken">No ceiling tasks</span>`.
 - **2-3 blind-spot bullets**: each is a `<strong>bolded claim</strong>` followed by 1 sentence of evidence with concrete numbers. Max 2 sentences per bullet.
 - **Budget**: ~150 words per section max.
 - Focus on blind spots and surprises, not expected behavior.
+- **Use "VAB2" not "HF"** when referring to the benchmark datasets in body text.
 
 ### 4. Compose `report.html`
 
@@ -99,16 +106,51 @@ Use this HTML template structure:
   .solved { background: #d4edda; color: #155724; }
   .degrading { background: #fff3cd; color: #856404; }
   .broken { background: #f8d7da; color: #721c24; }
+  table.overview {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.5pt;
+    margin: 10px 0 16px 0;
+  }
+  table.overview th {
+    background: #f5f5f5;
+    font-weight: bold;
+    text-align: left;
+    padding: 5px 8px;
+    border: 1px solid #ccc;
+  }
+  table.overview td {
+    padding: 5px 8px;
+    border: 1px solid #ccc;
+    vertical-align: top;
+  }
+  table.overview tr:nth-child(even) {
+    background: #fafafa;
+  }
 </style>
 </head>
 <body>
 
 <h1>Per-Primitive Findings</h1>
 
+<!-- Overview table: 7 primitives with example applications and eval tasks.
+     Populate from task_inventory.md (docs/task_inventory.md) and the summaries.
+     Use this exact structure: -->
+<table class="overview">
+<tr>
+  <th>Perceptual Primitive</th>
+  <th>Example Applications (Prompts)</th>
+  <th>Example Eval Tasks</th>
+</tr>
+<!-- One <tr> per primitive (7 rows). Example Eval Tasks must reflect
+     the tasks actually run (see docs/task_inventory.md).
+     Prior / Bias Override row includes visual-textual consistency tasks. -->
+</table>
+
 <img src="figures/accuracy_summary.png" alt="Accuracy summary across all tasks">
 <div class="caption">Figure 1. Accuracy across all evaluated tasks, grouped by perceptual primitive. Dashed lines at 50% and 90%.</div>
 
-<!-- 8 sections: one <h2> + <ul> per primitive -->
+<!-- 7 sections: one <h2> + <ul> per primitive -->
 <!-- Embed per-primitive error figures where they exist: -->
 <!-- <img src="figures/<primitive>_errors.png"> -->
 
@@ -116,17 +158,16 @@ Use this HTML template structure:
 </html>
 ```
 
-Section order:
+Section order (7 sections — visual-textual consistency is folded into Prior / Bias Override):
 1. Counting / Enumeration
 2. Spatial Localization
 3. Line / Path Following
 4. Relative Comparison
 5. Color Discrimination
 6. Text Reading (OCR)
-7. Prior / Bias Override
-8. Visual-Textual Consistency
+7. Prior / Bias Override (includes visual-textual consistency: value label conflicts, title/trend conflicts, legend color conflicts, annotation conflicts)
 
-For each section, after the bullet list, check if `figures/<primitive>_errors.png` exists and embed it if so (e.g., `figures/counting_errors.png`, `figures/spatial_errors.png`).
+For each section, after the bullet list, check if `figures/<primitive>_errors.png` exists and embed it if so (e.g., `figures/counting_enumeration_errors.png`, `figures/spatial_localization_errors.png`). For Prior / Bias Override, embed both `figures/prior_bias_override_errors.png` and `figures/text_visual_consistency_errors.png` if both exist (this section merges two sources of content).
 
 ### 4.5. Review and update figures
 

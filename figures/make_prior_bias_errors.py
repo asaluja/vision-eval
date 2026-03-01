@@ -15,11 +15,11 @@ cases = [
         "caption": "Flags: 40% — 83% of errors are exact biased answer",
     },
     {
-        "image": "generate/images/patterned_grid/pgrid_dice_add_g6_s768_0.png",
-        "gt": "1 (cell has extra dot)",
-        "model": "4 (canonical count)",
-        "caption": "Patterned grid add-anomaly: 0% — extra shape invisible",
+        "image": "generate/images/text_visual_conflict/value_label_n6_1.png",
+        "gt": "89 (bar height)",
+        "model": "56 (reads wrong label)",
+        "caption": "Value labels: 0% — always trusts text over visual",
     },
 ]
 
-make_error_composite(cases, "figures/prior_bias_override_errors.png")
+make_error_composite(cases, "figures/prior_bias_override_errors.png", figsize=(10, 3.8))

@@ -173,6 +173,7 @@ def generate(
                                         count = max(0, count - 1)
                                     else:  # add
                                         count = count + 1
+                                    anomaly_count = count  # capture before loop overwrites
 
                                 # Draw pattern
                                 dot_radius = max(2, cell_size // 12)
@@ -196,7 +197,7 @@ def generate(
                         # Cell ID for prompt
                         cell_id = f"{chr(ord('A') + anom_c)}{anom_r + 1}"
                         shape_name = "circles" if gtype == "dice" else "lines"
-                        actual_count = count  # post-anomaly
+                        actual_count = anomaly_count  # post-anomaly
 
                         instances.extend(make_instances(
                             fpath, task_type, actual_count,

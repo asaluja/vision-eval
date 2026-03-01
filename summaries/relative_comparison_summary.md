@@ -4,7 +4,7 @@
 Can the model compare two visual elements and determine which is larger/higher/closer/more? This spans bar height comparison, line series comparison, pie slice comparison, table max identification, and proximity/touching detection.
 
 ## Key Finding
-**Comparison is solved for discrete, labeled elements (bars, table cells) down to value differences of 2. At diff=1 (~1% relative difference), accuracy drops to 91%. Proximity detection reveals a sharp perceptual threshold: the model cannot distinguish "separated" from "touching" below ~12-15 pixels of visible gap. Pie slice comparison (73%) is substantially harder than bar comparison (98%) for the same proportional differences, confirming angular estimation is a weaker perceptual channel.**
+**Comparison is solved for discrete, labeled elements (bars, table cells) down to value differences of 2. At diff=1 (~1% relative difference), accuracy drops to 91%. Proximity detection reveals a sharp perceptual threshold: the model cannot distinguish "separated" from "touching" below distance_ratio ≈ 0.05 (gap < 5% of circle diameter). The corresponding pixel gap depends on circle size, with 100% reliability reached at ~15px and a 50% crossover around 9-10px. Pie slice comparison (73%) is substantially harder than bar comparison (98%) for the same proportional differences, confirming angular estimation is a weaker perceptual channel.**
 
 ## Tasks Evaluated
 
@@ -14,7 +14,7 @@ Can the model compare two visual elements and determine which is larger/higher/c
 |------|----------|---|--------|-------|
 | Table max value | 100% | 240 | Local | 3-10 rows × 2-5 cols, plain and shaded styles |
 | Bar comparison (diff≥2) | 100% | 500 | Local | value_diff=[2,5,10,20,40], all n_bars and grid configs |
-| Line comparison (gap≥10) | 100% | 60 | Local | 2-line charts, y=auto/100/200; gaps ≥10 always correct |
+| Line comparison (gap≥10) | 100% | 120 | Local | 2-line charts, y=auto/100/200; gaps ≥10 always correct |
 | Highest bar (chart) | 98.4% | 64 | Local | 3-10 category charts, natural data |
 | Relative bar compare (overall) | 98.5% | 600 | Local | Across all diffs, including diff=1 |
 
@@ -49,7 +49,7 @@ Can the model compare two visual elements and determine which is larger/higher/c
 - At diff=2 (~2-3% relative), accuracy is already 100%. No gradual degradation — the cliff is between 1% and 2% relative difference.
 - Number of distractor bars (4-12) has **no significant effect** — accuracy is 96.7-100% across all n_bars values.
 - Grid lines show **no consistent directional effect** — errors at diff=1 are scattered across grid/no-grid conditions.
-- **Error pattern**: All 9 errors at diff=1 follow the same failure mode — the model picks the wrong bar of the highlighted pair. Base values range from 60-91, confirming the model struggles with sub-2% relative differences regardless of absolute magnitude.
+- **Error pattern**: All 9 errors at diff=1 follow the same failure mode — the model picks the wrong bar of the highlighted pair. Base values range from 74-90, confirming the model struggles with sub-2% relative differences regardless of absolute magnitude.
 
 #### Line Series Comparison
 
@@ -120,6 +120,8 @@ Errors correlate with the gap between the largest and second-largest slice. Most
 
 This is notably harder than bar comparison, where diff≥2 is 100%. Angular estimation (pie wedges) is perceptually harder than height estimation (bars) for the same proportional difference — consistent with psychophysics research showing humans are also worse at angle vs. length judgments.
 
+**Extended thinking: 75.0%** (+1.7pp) — no meaningful improvement. Thinking does not help angular estimation; this is a perceptual limitation, not a reasoning one.
+
 #### Cross-Representation Data Matching (`chart_data_match`)
 
 Overall: **93.3%** (224/240) — two charts shown side-by-side, ask if the underlying data is identical.
@@ -149,21 +151,21 @@ By n_categories: accuracy is 90-97% across all sizes (3-6), with slight degradat
 
 3. **No distractor effect for comparison.** Increasing bars from 4 to 12 has no impact on comparison accuracy (96.7-100% across all n_bars). The model successfully attends to highlighted elements and ignores irrelevant context, contrasting with counting tasks where more elements degrade performance.
 
-4. **Pixel-level proximity detection has a hard ~12-15px floor.** Below ~12px of visible gap between circle edges, the model defaults to "touching." This is a fundamental resolution limit, not a reasoning failure.
+4. **Proximity detection threshold is distance_ratio ≈ 0.05–0.10, but the pixel gap depends on circle size.** The generator parameterizes gap as `distance_ratio` (gap / diameter). At distance_ratio ≤ 0.04, accuracy is 2–8%; the transition zone spans 0.05–0.10; and distance_ratio ≥ 0.20 is 100%. Converting to pixels via `gap_px = distance_ratio × diameter_px`: for mid-sized circles (r=0.15–0.20, diameter 118–157px), the 50% crossover falls at ~9–10px and 100% reliability at ~15px. But the same distance_ratio maps to very different pixel gaps across radii (e.g., distance_ratio=0.05 is 2px at r=0.05 but 10px at r=0.25), so pixel gap alone does not tell the full story.
 
-5. **Circle size creates distinct failure regimes.** r=0.10 shows pathological "always touching" bias (41.2% overall). r=0.05 is noisy (61.8%). r=0.15-0.25 show cleaner sigmoid transitions. The model processes proximity differently depending on object scale.
+5. **Circle size creates distinct failure regimes.** r=0.10 shows pathological "always touching" bias (41.2% overall, 0% at all near-threshold distances up to 7.8px gap). r=0.05 is noisy (61.8%). r=0.15–0.25 show cleaner sigmoid transitions. The model processes proximity differently depending on object scale.
 
 6. **False positive bias in proximity.** Near the threshold, errors are exclusively "touching" when actually separated. The model has a systematic bias toward reporting contact — a reasonable real-world prior that fails for precisely separated geometric shapes.
 
 7. **Angular comparison (pie) is harder than height comparison (bars).** Bar comparison is 100% at diff≥2; pie slice comparison is 73% overall. Estimating angles/areas is perceptually harder than comparing aligned bar heights for the same proportional difference.
 
-9. **Pie chart imprecision propagates to cross-representation matching.** The bar-vs-pie `chart_data_match` task (85%) fails predominantly on the "same data" case (75%), where the model must confirm every pie proportion matches the bar values exactly. A single imprecise angle read causes a false "No." Detecting differences (95%) is substantially easier — confirming equality requires all reads to be precise.
+8. **Pie chart imprecision propagates to cross-representation matching.** The bar-vs-pie `chart_data_match` task (85%) fails predominantly on the "same data" case (75%), where the model must confirm every pie proportion matches the bar values exactly. A single imprecise angle read causes a false "No." Detecting differences (95%) is substantially easier — confirming equality requires all reads to be precise.
 
-8. **Line comparison difficulty is entirely determined by y-axis scale.** With auto-zoom, line comparison at gap=1 is 95%. With a fixed y=200 axis, the same gap=1 drops to 65% — worse than bar comparison at diff=1 (91%). The apparent ease of line comparison in naive evals is an artifact of matplotlib's default auto-scaling making small differences look large. When the axis is fixed to reflect a realistic data range, line and bar comparison have similar thresholds.
+9. **Line comparison difficulty is entirely determined by y-axis scale.** With auto-zoom, line comparison at gap=1 is 95%. With a fixed y=200 axis, the same gap=1 drops to 65% — worse than bar comparison at diff=1 (91%). The apparent ease of line comparison in naive evals is an artifact of matplotlib's default auto-scaling making small differences look large. When the axis is fixed to reflect a realistic data range, line and bar comparison have similar thresholds.
 
 ## Finetuning Implications
 
-- **Proximity calibration is the highest-value target.** The 12-15px threshold and the r=0.10 pathological bias represent clear, systematic errors. Training pairs: (nearly-touching circles with visible gap → "No") at various scales.
+- **Proximity calibration is the highest-value target.** The distance_ratio 0.05–0.10 transition zone and the r=0.10 pathological bias represent clear, systematic errors. Training pairs: (nearly-touching circles with visible gap → "No") at various scales and radii.
 - **DPO pairs for touching circles:** The sharp 0% → 100% transitions provide ideal hard negative mining. Pairs at dist=0.05 (wrong) vs dist=0.20 (right) for the same radius create high-quality preference pairs.
 - **Diff=1 bar comparison is near the noise floor.** At 91%, the absolute value difference (1 pixel of bar height) is genuinely at visual resolution limits. Chain-of-thought reasoning may help more than visual finetuning.
 - **Pie slice comparison needs angular reasoning training.** At 73%, this is the weakest structured comparison task. Training with explicit angular estimation ("slice A spans ~120°, slice B spans ~115°") could help.

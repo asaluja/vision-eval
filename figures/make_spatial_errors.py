@@ -3,10 +3,10 @@ from figures.error_composite import make_error_composite
 
 cases = [
     {
-        "image": "generate/images/charts/line_5x3_g1_v1_4.png",
-        "gt": "Wholesale @ Apr = 78",
-        "model": "64 (read In-Store)",
-        "caption": "Series confusion: correct x, wrong line",
+        "image": "generate/images/charts/line_3x10_g0_v1_0.png",
+        "gt": "83 (correct series)",
+        "model": "56 (wrong series)",
+        "caption": "10-series line chart: reads wrong line at correct x",
     },
     {
         "image": "generate/images/diagrams/flow_multi_decision_n3_4.png",
