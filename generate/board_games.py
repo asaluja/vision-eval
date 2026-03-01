@@ -109,8 +109,8 @@ def generate(
     include_canonical: bool = True,
 ) -> list[TaskInstance]:
     """Generate board game images with standard and modified dimensions."""
-    # Deterministic generator — replicates produce identical images, so cap at 1
-    n_per_config = 1
+    # Images are deterministic, but model responses are stochastic.
+    # Multiple evals of the same image give tighter bias rate estimates.
 
     if game_types is None:
         game_types = ["chess", "go"]

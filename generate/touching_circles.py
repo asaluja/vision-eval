@@ -31,13 +31,17 @@ def generate(
     """
     if distance_ratios is None:
         # high-signal: denser near the touching boundary
-        distance_ratios = [-0.4, -0.2, -0.1, 0.0, 0.05, 0.1, 0.2, 0.4, 0.6]
+        # Fine-grained steps 0.01-0.1 to map the perceptual threshold
+        distance_ratios = [-0.4, -0.2, -0.1, 0.0,
+                           0.01, 0.02, 0.03, 0.04, 0.05,
+                           0.06, 0.07, 0.08, 0.09, 0.1,
+                           0.2, 0.4, 0.6]
     if arrangements is None:
         arrangements = ["horizontal"]  # low-signal: fixed
     if canvas_sizes is None:
         canvas_sizes = [512]  # low-signal: fixed
     if radius_fracs is None:
-        radius_fracs = [0.1, 0.15, 0.2]  # high-signal: diameter affects difficulty
+        radius_fracs = [0.05, 0.1, 0.15, 0.2, 0.25]  # high-signal: diameter affects difficulty
 
     task_type = "touching_circles"
     out = ensure_dir(os.path.join(output_dir, task_type))

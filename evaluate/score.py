@@ -125,7 +125,8 @@ def score_instance(task_type: str, ground_truth: Any, response: str, metadata: d
             result["correct"] = (extracted == int(ground_truth))
 
     # Chart value reading (tolerance-based: model must estimate from visual)
-    elif task_type in ("chart_bar_value", "chart_grouped_value", "chart_line_value"):
+    elif task_type in ("chart_bar_value", "chart_grouped_value", "chart_line_value",
+                       "conflict_value_label", "conflict_legend_color"):
         extracted = extract_number(response)
         result["extracted"] = extracted
         if extracted is not None:
@@ -137,7 +138,7 @@ def score_instance(task_type: str, ground_truth: Any, response: str, metadata: d
             result["error"] = error
 
     # Yes/No tasks
-    elif task_type in ("touching_circles", "optical_illusion"):
+    elif task_type in ("touching_circles", "optical_illusion", "chart_data_match"):
         extracted = extract_yes_no(response)
         result["extracted"] = extracted
         if extracted is not None:
@@ -164,7 +165,7 @@ def score_instance(task_type: str, ground_truth: Any, response: str, metadata: d
             result["correct"] = (extracted == gt)
 
     # Trend tasks (increasing/decreasing)
-    elif task_type == "chart_line_trend":
+    elif task_type in ("chart_line_trend", "conflict_title_trend"):
         extracted = extract_trend(response)
         result["extracted"] = extracted
         if extracted is not None:
@@ -173,7 +174,8 @@ def score_instance(task_type: str, ground_truth: Any, response: str, metadata: d
     # Text-answer tasks (category names, step names, etc.)
     elif task_type in ("chart_bar_compare", "table_max",
                        "diagram_next_step", "diagram_decision",
-                       "text_word_reading", "color_grid_odd"):
+                       "text_word_reading", "color_grid_odd",
+                       "conflict_annotation"):
         extracted = extract_text_answer(response)
         result["extracted"] = extracted
         if extracted is not None:
@@ -185,6 +187,12 @@ def score_instance(task_type: str, ground_truth: Any, response: str, metadata: d
         result["extracted"] = extracted
         if extracted is not None:
             result["correct"] = (extracted.lower().strip() == str(ground_truth).lower().strip())
+
+    # Text-reliance check (for grounding/conflict tasks)
+    if metadata and "text_answer" in metadata and result["extracted"] is not None:
+        text_ans = str(metadata["text_answer"]).lower().strip()
+        extracted_str = str(result["extracted"]).lower().strip()
+        result["text_reliant"] = (extracted_str == text_ans)
 
     # Bias alignment check (for DPO data)
     if metadata and "expected_bias" in metadata and not result["correct"]:

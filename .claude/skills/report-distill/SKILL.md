@@ -11,10 +11,12 @@ Distill the detailed evaluation summary at `$ARGUMENTS` into a concise, copy-pas
 Produce exactly three things, in this order:
 
 ### 1. CSV table
-A CSV table (with header row) summarizing accuracy on each task. The user will paste this into Google Sheets and then copy into Google Docs as a formatted table. Keep task names short. Include columns: Task, Accuracy, n.
+A CSV table (with header row) summarizing accuracy on each task. The user will paste this into Google Sheets and then copy into Google Docs as a formatted table. Keep task names short. Prefer wide/fat tables over tall ones: collapse ceiling tasks (100%) into a single row, use columns to show condition splits (e.g. annotated vs unannotated) rather than separate rows.
 
 ### 2. Bullet points (3-5)
-Each bullet is a standalone paragraph starting with a **bolded claim** followed by 1-2 sentences of evidence. Do NOT prefix with `-` or `*` — the user will apply bullet formatting in Google Docs. Separate bullets with blank lines.
+Each bullet is a **bolded claim** followed by 1 sentence of evidence with concrete numbers. That's it — no more than 2 sentences total per bullet. Do NOT prefix with `-` or `*` — the user will apply bullet formatting in Google Docs. Separate bullets with blank lines.
+
+Keep the entire bullet section under ~150 words. If you find yourself writing a third sentence, cut it or split the claim into two bullets.
 
 Focus on:
 - What's solved (near-100% tasks)

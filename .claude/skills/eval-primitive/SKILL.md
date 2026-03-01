@@ -53,19 +53,33 @@ After generation completes, report:
 - Do the generation counts look right?
 - Do they want to spot-check any images before proceeding?
 - Confirm they want to proceed to evaluation (this will make API calls and cost credits).
+- How many workers to use (default 10)? Higher = faster but more concurrent API calls.
+- For multi-task generators (e.g. `chart` produces 9 task_types), should we evaluate all task_types or filter to only the ones relevant to this primitive? Filtering saves API credits but means re-generating later for other primitives.
 
 **Do NOT proceed to Step 3 until the user confirms.**
 
 ### Step 3: Evaluate with API
 
-Run evaluation on synthetic:
+Run evaluation on synthetic. Use the worker count the user selected:
 ```bash
-source .venv/bin/activate && python run_phase1.py --eval-only --tasks <task_list> --workers 10
+source .venv/bin/activate && python run_phase1.py --eval-only --tasks <task_list> --workers <N>
 ```
+
+If the user chose to filter a multi-task generator to specific task_types, create a filtered instances file first:
+```python
+# Filter e.g. chart_instances.jsonl to only chart_line_trend
+import json
+with open('results/chart_instances.jsonl') as fin, open('results/<filtered>_instances.jsonl', 'w') as fout:
+    for line in fin:
+        d = json.loads(line)
+        if d['task_type'] in TARGET_TYPES:
+            fout.write(line)
+```
+Then evaluate the filtered file using `load_instances()` + `run_evaluation()` directly.
 
 If HF benchmarks apply, also run:
 ```bash
-source .venv/bin/activate && python run_benchmarks.py --dataset <blind|biased> --tasks <hf_tasks> --workers 10
+source .venv/bin/activate && python run_benchmarks.py --dataset <blind|biased> --tasks <hf_tasks> --workers <N>
 ```
 
 After evaluation completes, report:
@@ -140,7 +154,7 @@ python run_benchmarks.py --dataset blind --tasks path_following line_intersectio
 
 ### 2. `relative_comparison`
 
-**Definition**: Can the model compare two visual elements and determine which is larger/higher/more?
+**Definition**: Can the model compare two visual elements and determine which is larger/higher/closer/more?
 
 #### Synthetic Tasks
 
@@ -150,6 +164,7 @@ python run_benchmarks.py --dataset blind --tasks path_following line_intersectio
 | Line series comparison | `relative_comparison` | `chart_bar_compare` | n_points: [5,8], value_gap (emergent) | 3 |
 | Highest bar identification | `chart` | `chart_bar_compare` | n_categories: [3,5,7,10] | 2 |
 | Table max value | `table` | `table_max` | n_rows: [3,5,7,10], n_cols: [2,3,5] | 2 |
+| Touching/proximity detection | `touching_circles` | `touching_circles` | distance: [-0.4,-0.2,0,0.2,0.4,0.6], radius: [30,50] | 3 |
 
 #### HF Benchmark Tasks
 None directly applicable.
@@ -159,17 +174,18 @@ None directly applicable.
 - **Show grid**: Gridlines should help estimation but may not affect comparison
 - **Number of distractors**: More bars/points = more visual clutter
 - **Chart type**: Bar (discrete, easy) vs line (continuous, harder at crossing points)
+- **Proximity distance** (-0.4 to 0.6): Negative = overlapping, 0 = touching, positive = separated. Tests fine-grained spatial discrimination.
 
 #### Commands
 ```bash
 # Generate
-python run_phase1.py --generate-only --n 2 --tasks relative_comparison chart table
+python run_phase1.py --generate-only --n 3 --tasks relative_comparison chart table touching_circles
 
 # Evaluate
-python run_phase1.py --eval-only --tasks relative_comparison chart table --workers 10
+python run_phase1.py --eval-only --tasks relative_comparison chart table touching_circles --workers 10
 ```
 
-**Note**: Filter analysis to task_types: `chart_bar_compare`, `table_max`. The `chart` generator's `chart_bar_compare` tasks use natural data (highest bar), while `relative_comparison` generator uses controlled value diffs.
+**Note**: Filter analysis to task_types: `chart_bar_compare`, `table_max`, `touching_circles`. The `chart` generator's `chart_bar_compare` tasks use natural data (highest bar), while `relative_comparison` generator uses controlled value diffs.
 
 ---
 
@@ -334,10 +350,12 @@ Before generating/evaluating, check what already exists. As of the initial setup
 | `chart_counting_results.jsonl` | chart_bar_count, etc. | varies | counting_enumeration |
 | `patterned_grid_results.jsonl` | patterned_grid | 12 | prior_bias_override |
 | `board_games_results.jsonl` | board_game_rows, board_game_cols | 20 | prior_bias_override |
+| `counting_circles_results.jsonl` | counting_circles | 80 | counting_enumeration |
+| `touching_circles_results.jsonl` | touching_circles | 27 | relative_comparison |
 | `blind_benchmark_results.jsonl` | mixed | varies | multiple |
 
 **Key gaps** (no existing results):
-- `relative_comparison` — no results for `chart_bar_compare` with controlled value diffs or `table_max`
+- `relative_comparison` — no results for `chart_bar_compare` with controlled value diffs or `table_max`; `touching_circles` has only 27 results (needs more coverage)
 - `color_discrimination` — no results for `color_grid_odd` or color-matched `chart_bar_value`
 - `text_reading` — no results for `text_word_reading`, `text_number_reading`, or label stress tests
 - `chart_line_trend` — no results for trend detection

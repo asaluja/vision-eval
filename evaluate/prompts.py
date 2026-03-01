@@ -142,10 +142,10 @@ PROMPTS = {
         "Put the value in curly braces, e.g. {{42}}.",
     ],
     "chart_line_trend": [
-        "Is the overall trend increasing or decreasing? "
+        "Is the trend of {series} increasing or decreasing? "
         "Answer with {{increasing}} or {{decreasing}}.",
 
-        "Does the line go up or down overall? "
+        "Does {series} go up or down overall? "
         "Answer with {{increasing}} or {{decreasing}}.",
     ],
     "chart_line_count": [
@@ -198,6 +198,45 @@ PROMPTS = {
 
         "Following the \"{condition}\" decision, if the answer is {answer}, "
         "which step comes next? Put the step name in curly braces, e.g. {{Send Email}}.",
+    ],
+    # --- Visual-textual consistency (grounding) ---
+    "conflict_value_label": [
+        "Looking at the plotted data, what is the value for {category}? "
+        "Answer with a number in curly braces, e.g. {{42}}.",
+
+        "Based on the bar heights shown, read the value of {category}. "
+        "Put your answer in curly braces, e.g. {{42}}.",
+    ],
+    "conflict_title_trend": [
+        "Looking at the plotted data points, is the overall trend increasing or decreasing? "
+        "Answer with {{increasing}} or {{decreasing}}.",
+
+        "Based on the data points shown in the chart, does the trend go up or down overall? "
+        "Answer with {{increasing}} or {{decreasing}}.",
+    ],
+    "conflict_legend_color": [
+        "What is the value of {series} for {category}? "
+        "Answer with a number in curly braces, e.g. {{42}}.",
+
+        "Read the {series} bar for {category}. "
+        "Put the value in curly braces, e.g. {{42}}.",
+    ],
+    "conflict_annotation": [
+        "Which category has the highest value? "
+        "Answer with the category name in curly braces, e.g. {{January}}.",
+
+        "Which bar is the tallest? "
+        "Answer with its label in curly braces, e.g. {{January}}.",
+    ],
+    # --- Cross-representation comparison ---
+    "chart_data_match": [
+        "Chart A and Chart B show data using different chart types. "
+        "Do they display exactly the same data values for each category? "
+        "Answer {{Yes}} or {{No}}.",
+
+        "These two charts visualize data in different formats. "
+        "Are the underlying values identical across both charts? "
+        "Answer {{Yes}} or {{No}}.",
     ],
 }
 

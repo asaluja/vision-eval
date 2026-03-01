@@ -38,6 +38,8 @@ TASK_REGISTRY = {
     "relative_comparison": ("generate.relative_comparison", {}),
     "color_discrimination": ("generate.color_discrimination", {}),
     "text_reading": ("generate.text_reading", {}),
+    "chart_comparison": ("generate.chart_comparison", {}),
+    "text_visual_conflict": ("generate.text_visual_conflict", {}),
 }
 
 

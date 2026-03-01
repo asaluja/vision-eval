@@ -21,7 +21,7 @@ from evaluate.prompts import get_prompt
 
 COLORS = list(matplotlib.cm.tab10.colors[:10])
 
-CATEGORY_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H"]
+CATEGORY_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
 MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 SERIES_NAMES = ["Revenue", "Cost", "Profit"]
@@ -77,7 +77,7 @@ def generate(
     Part B: Two-line charts with "which is higher at X?" questions.
     """
     if n_bars_list is None:
-        n_bars_list = [4, 6, 8]
+        n_bars_list = [4, 6, 8, 10, 12]
     if value_diffs is None:
         # Key axis: how different are the two bars?
         value_diffs = [1, 2, 5, 10, 20, 40]
@@ -98,7 +98,11 @@ def generate(
                     # Pick two bars to compare
                     i1, i2 = random.sample(range(n_bars), 2)
                     # Set them so they differ by `diff` in a random direction
-                    base_val = random.randint(25, 75)
+                    # For small diffs, use higher base values so the % difference is smaller
+                    if diff <= 2:
+                        base_val = random.randint(60, 95)
+                    else:
+                        base_val = random.randint(25, 75)
                     if random.random() < 0.5:
                         values[i1] = base_val + diff
                         values[i2] = base_val

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body {
+    font-family: 'Google Sans', Arial, sans-serif;
+    font-size: 11pt;
+    line-height: 1.45;
+    max-width: 7.5in;
+    margin: 0.5in auto;
+    color: #222;
+  }
+  h1 {
+    font-size: 16pt;
+    margin-bottom: 4px;
+  }
+  h2 {
+    font-size: 12pt;
+    margin-top: 14px;
+    margin-bottom: 4px;
+    color: #1a1a1a;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 2px;
+  }
+  ul {
+    margin-top: 3px;
+    margin-bottom: 8px;
+    padding-left: 20px;
+  }
+  li {
+    margin-bottom: 5px;
+  }
+  img {
+    width: 100%;
+    margin: 8px 0;
+  }
+  .caption {
+    font-size: 9pt;
+    color: #666;
+    text-align: center;
+    margin-top: -4px;
+    margin-bottom: 10px;
+  }
+  strong { color: #111; }
+  .regime-label {
+    display: inline-block;
+    font-size: 9pt;
+    font-weight: bold;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-right: 4px;
+  }
+  .solved { background: #d4edda; color: #155724; }
+  .degrading { background: #fff3cd; color: #856404; }
+  .broken { background: #f8d7da; color: #721c24; }
+</style>
+</head>
+<body>
+
+<h1>Per-Primitive Findings</h1>
+
+<img src="../figures/accuracy_summary.png" alt="Accuracy summary across all tasks">
+<div class="caption">Figure 1. Accuracy across all evaluated tasks, grouped by perceptual primitive. Dashed lines at 50% and 90%.</div>
+
+<h2>1. Counting / Enumeration</h2>
+<ul>
+  <li><span class="regime-label solved">Solved</span> Structured counting (chart bars, series, lines, table rows, diagram nodes) hits 97-100% across 1,456 instances.</li>
+  <li><strong>Olympic rings memorization dominates the HF circle gap.</strong> When GT&ne;5, the model predicts &ldquo;5&rdquo; in 22% of HF cases vs 4% in monochrome generated images&mdash;accounting for 73% of the 24pp gen-vs-HF accuracy gap. This is a memorization failure, not a perceptual one.</li>
+  <li><strong>Shape complexity compounds overlap errors.</strong> At matched counts 5-9, pentagons (60%) are far harder than circles (90%). Complex edges create ambiguous intersection regions the model interprets as additional shapes.</li>
+  <li><strong>Text labels completely rescue grid counting.</strong> Blank grids score 49% (0% at 9+ rows); adding coordinate labels restores 100%. The model reads text rather than counting visual lines.</li>
+</ul>
+
+<h2>2. Spatial Localization</h2>
+<ul>
+  <li><span class="regime-label solved">Solved</span> Table cell lookup (100%, n=480), diagram navigation (100%, n=240), simple bar charts (100%).</li>
+  <li><strong>Series confusion in dense charts.</strong> Both grouped bar and line value reading degrade from ~100% at 2-3 series to ~50% at 9-10. The model finds the correct x-position but attributes the value to the wrong series. Annotations make this <em>worse</em> for line charts (72% with labels vs 80% without)&mdash;the model grabs a nearby label from the wrong series.</li>
+  <li><strong>Circled letter errors are off by exactly one position 70% of the time.</strong> Lowercase characters flanked by uppercase neighbors are nearly invisible (0%); narrow characters like <code>l</code> produce circles too thin for the model to localize.</li>
+</ul>
+
+<h2>3. Line / Path Following</h2>
+<ul>
+  <li><span class="regime-label solved">Solved</span> Discrete labeled navigation (diagram arrows: 100%, n=450). Trend detection at 95% after prompt fix (specifying series by name).</li>
+  <li><strong>The model cannot selectively trace paths.</strong> In subway maps with mixed endpoints, 97% of errors are overcounts&mdash;the model counts all visible paths rather than tracing which ones connect the queried pair. Accuracy drops from 90% at 2 connections to 10% at 6.</li>
+  <li><strong>Intersection hallucination at gt=0.</strong> With 5-point polylines that don&rsquo;t intersect, accuracy is 0%&mdash;the model always reports 2-3 crossings, interpreting visual proximity as intersection. Even with 3-point lines, the HF gt=0 false-positive rate is 64%.</li>
+</ul>
+
+<h2>4. Relative Comparison</h2>
+<ul>
+  <li><span class="regime-label solved">Solved</span> Table max (100%, n=240), bar comparison at diff&ge;2 (100%, n=400)&mdash;regardless of distractor bar count (4-12).</li>
+  <li><strong>Bar comparison has a razor-sharp cliff at ~1% relative difference.</strong> At diff=1 on a 60-95 scale, accuracy drops to 94%; at diff=2 it&rsquo;s 100%. No gradual degradation&mdash;the transition is binary.</li>
+  <li><strong>Proximity detection has a hard ~12-15px floor.</strong> Below 12px of visible gap, the model defaults to &ldquo;touching&rdquo; with 100% false-positive rate. Small circles (r=0.10) show a pathological regime: 0% for <em>every</em> gap up to 10px (100 consecutive wrong answers), then 100% at 20px.</li>
+</ul>
+
+<h2>5. Color Discrimination</h2>
+<ul>
+  <li><span class="regime-label solved">Solved</span> Shade detection at &Delta;L&ge;16 (100%). Distinct-color bar charts (97%).</li>
+  <li><strong>Shade detection follows a clean sigmoid</strong> from 100% (&Delta;L&ge;16) to 18% (&Delta;L&asymp;5). The model applies correct row-by-row scanning strategy but cannot perceive the difference&mdash;intact reasoning on insufficient percepts.</li>
+  <li><strong>Color family creates a 5&times; accuracy range.</strong> At &Delta;L&asymp;7: oranges 70%, greens 10%. A single &Delta;L threshold is insufficient to characterize color discrimination. Dark shades are disproportionately confusable, consistent with Weber&rsquo;s law.</li>
+</ul>
+
+<h2>6. Text Reading (OCR)</h2>
+<ul>
+  <li><span class="regime-label solved">Solved</span> Text reading above 14px (words &ge;96%, numbers &ge;80% across all rotations). Chart labels 100% even at 7px.</li>
+  <li><strong>Lexical priors rescue words but not numbers.</strong> At font=10 + 90&deg; rotation, words score 47% via plausible guessing (&ldquo;Forecast&rdquo;&rarr;&ldquo;Forrest&rdquo;) while numbers score 0%&mdash;each digit must be independently resolved with no vocabulary fallback.</li>
+  <li><strong>Rotation is harder than small size or low contrast alone.</strong> Unrotated font=10 text is 100% for both words and numbers; rotation to 90&deg; causes the collapse. Vertical text is a qualitatively distinct failure mode.</li>
+</ul>
+
+<h2>7. Prior / Bias Override</h2>
+<ul>
+  <li><span class="regime-label broken">No ceiling tasks</span> This is the only primitive where every task shows significant prior-induced errors.</li>
+  <li><strong>Board game bias is absolute.</strong> The model outputs 8 (chess) or 19 (Go) in every single response (400/400), with zero variance. The 60% overall accuracy is pure coincidence&mdash;correct only when the actual dimension matches the canonical one.</li>
+  <li><strong>Add-anomalies in patterned grids are invisible (0/126).</strong> Remove-anomalies are partially detectable (55% at 6&times;6) but degrade to 12% at 10&times;10 as surrounding pattern context strengthens the bias.</li>
+  <li><strong>Optical illusions affect the model like humans.</strong> Ebbinghaus is at exact chance (50%); the model&rsquo;s visual representations encode the same biased percepts humans experience.</li>
+</ul>
+
+<h2>8. Visual-Textual Consistency</h2>
+<ul>
+  <li><span class="regime-label solved">Solved</span> Title and legend conflicts (100%)&mdash;the model reads visual data and ignores contradictory high-level text.</li>
+  <li><strong>The model absolutely trusts numeric labels over visual evidence.</strong> When a bar is labeled with the wrong value, it reads the label 100% of the time (0% accuracy)&mdash;even when the prompt says &ldquo;based on the bar heights.&rdquo; Combined with grid counting results, this confirms the model&rsquo;s primary chart-reading strategy is OCR, not visual perception.</li>
+  <li><strong>Text-reliance follows a proximity hierarchy:</strong> labels placed directly on elements (trusted absolutely) &gt; spatial annotations like arrows (partially trusted when visual evidence is ambiguous) &gt; semantic text like titles and legends (correctly ignored).</li>
+</ul>
+
+</body>
+</html>

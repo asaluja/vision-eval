@@ -11,15 +11,14 @@ Can the model find a specific element in an image and report what's there? This 
 | Table cell lookup | **100%** | 480 | 12 grid sizes × 2 styles × 2 prompt phrasings × 2 query sets |
 | Diagram decision (Yes/No) | **100%** | 240 | Across all template complexities |
 | Diagram next step | **94.2%** | 120 | All 7 errors in multi_decision template |
-| Bar chart value (annotated) | **100%** | 40 | With value labels displayed |
-| Bar chart value (unannotated) | 52.5% exact, **100% ≤2** | 40 | Pure estimation noise |
-| Grouped bar value (annotated) | **100%** | 40 | With value labels displayed |
-| Grouped bar value (unannotated) | 45.0% exact, **100% ≤2** | 40 | Pure estimation noise |
-| Line chart value (annotated) | **90.0%** | 40 | 4 catastrophic errors from series confusion |
-| Line chart value (unannotated) | 72.5% exact, **100% ≤2** | 40 | Pure estimation noise |
+| Bar chart value | **100%** | 64 | Simple bar charts (tolerance ±5% or ±2) |
+| Grouped bar value | **74.0%** | 576 | 2-10 series. 97% at 2 series, degrades to 50-53% at 9-10 series |
+| Line chart value | **75.7%** | 576 | 2-10 series. 100% at 2-3 series, degrades to 47% at 10 series |
 | Circled letter | **82.4%** | 624 | HuggingFace VLMs-are-Blind benchmark |
 
-**Bottom line**: Spatial localization is largely solved for structured, clean layouts. Tables, simple diagrams, and annotated bar charts are at or near 100%. Failures emerge from three specific sources: visual clutter confusing series attribution, complex graph topology confusing edge tracing, and overlaid annotations degrading fine-grained character localization.
+**Bottom line**: Spatial localization is solved for structured, low-clutter layouts (tables, simple charts, diagrams). It degrades sharply with visual density: grouped bar and line chart value reading drop from ~100% at 2-3 series to ~50% at 9-10 series. Failures come from series attribution confusion in dense charts, arrow tracing in complex DAGs, and fine-grained character localization under overlay.
+
+**Note on chart scoring**: Chart value-reading tasks now use tolerance-based scoring (within 5% of GT or ±2, whichever is larger) rather than exact match, reflecting that models must estimate from visual position.
 
 ---
 
@@ -86,65 +85,57 @@ Each image has two prompt variants; both fail identically, confirming the errors
 ## 3. Chart Value Reading
 
 **Source**: Generated (matplotlib bar, grouped bar, line charts)
-**Axes**: Chart type, show_values (True/False), show_grid (True), n_categories (3, 5, 7, 10), n_series (1–3 for line)
+**Axes**: Chart type, show_values (True/False), show_grid (True/False), n_categories (3, 5, 7, 10), n_series (2–10)
+**Scoring**: Tolerance-based (within 5% of GT or ±2, whichever is larger)
 
-### Tiered Error Metrics (exact / ±1 / ±2)
+### Overall by task type
 
-**With value annotations (show_values=True):**
+| Task | Accuracy | n |
+|------|----------|---|
+| Bar value (simple) | 100% | 64 |
+| Grouped bar value | 74.0% | 576 |
+| Line value | 75.7% | 576 |
 
-| Task | Exact | ≤1 | ≤2 | n |
-|------|-------|-----|-----|---|
-| Bar value | 100% | 100% | 100% | 40 |
-| Grouped bar value | 100% | 100% | 100% | 40 |
-| Line value | 90.0% | 90.0% | 90.0% | 40 |
+### Series count is the primary difficulty axis
 
-**Without value annotations (show_values=False):**
+**Grouped bar value by n_series:**
 
-| Task | Exact | ≤1 | ≤2 | n |
-|------|-------|-----|-----|---|
-| Bar value | 52.5% | 100% | 100% | 40 |
-| Grouped bar value | 45.0% | 90.0% | 100% | 40 |
-| Line value | 72.5% | 95.0% | 100% | 40 |
+| n_series | Accuracy |
+|----------|----------|
+| 2 | 97% |
+| 3 | 98% |
+| 4 | 89% |
+| 5 | 83% |
+| 6 | 69% |
+| 7 | 66% |
+| 8 | 61% |
+| 9 | 50% |
+| 10 | 53% |
 
-The key structural observation: without annotations, all errors are ≤2 — pure visual estimation noise. With annotations, bar/grouped are perfect (the model just reads the label), but line charts drop to 90% with errors that are *catastrophic* (off by 4–86), not estimation errors.
+**Line value by n_series:**
 
-### Deep Dive: Series Confusion in Annotated Multi-Series Line Charts
+| n_series | Accuracy |
+|----------|----------|
+| 2 | 100% |
+| 3 | 100% |
+| 4 | 95% |
+| 5 | 73% |
+| 6 | 83% |
+| 7 | 66% |
+| 8 | 55% |
+| 9 | 62% |
+| 10 | 47% |
 
-All 4 line chart errors occur when `show_values=True` and `n_series ≥ 2`. Every error is a **series confusion**: the model identifies the correct x-axis point but reads the value from the wrong series' label.
+Both tasks show the same pattern: near-perfect at 2-3 series, steady degradation to ~50% at 9-10. The model correctly localizes the queried position (right x-axis point, right row) but increasingly confuses which series the value belongs to as visual density increases.
 
-| Image | Query | Ground truth | Model answer | Error | What happened |
-|-------|-------|-------------|--------------|-------|---------------|
-| `line_3x2_g1_v1_0` | Cost at Jan | 39 | 35 | 4 | Read Revenue (35) instead — labels stacked 4px apart |
-| `line_3x2_g1_v1_0` | Cost at Jan | 39 | 35 | 4 | Same image, second prompt variant — same error |
-| `line_5x3_g1_v1_4` | Wholesale at Apr | 78 | 64 | 14 | Read In-Store (64) instead |
-| `line_10x3_g1_v1_1` | Wholesale at Jun | 90 | 4 | 86 | Read Online (4) instead — said "green line (Wholesale)" but grabbed wrong label |
+### Show values effect (line charts)
 
-The worst case (`line_10x3_g1_v1_1`) is especially revealing: the model's response explicitly says *"Looking at the green line (Wholesale)"* — correct series identification — but then reads value 4, which belongs to the blue Online line 86 units away. With 10 categories × 3 series = 30 data labels on the chart, the visual density overwhelms accurate label-to-line association.
+| Condition | Accuracy |
+|-----------|----------|
+| show_values=False | 80% |
+| show_values=True | 72% |
 
-The `line_3x2` case shows this can happen even on simple charts: at Jan, Revenue (blue, 35) and Cost (orange, 39) are only 4 units apart, with their value labels nearly touching. Both prompt variants fail identically, confirming a perceptual issue.
-
-**Paradoxical finding**: `show_values=True` *hurts* accuracy on multi-series line charts (90%) compared to `show_values=False` (100% within ±2). Without labels, the model estimates from gridlines and gets it right. With labels, it sometimes grabs a nearby label from the wrong series — and since the label is an exact value from a different series, the error is catastrophic rather than gradual.
-
-### Deep Dive: Visual Estimation Without Labels
-
-When `show_values=False`, the model must estimate bar heights / line positions from the y-axis grid. All errors are small:
-
-- **Bar charts**: 19 off-by-1 errors out of 40 (no off-by-2). Direction is balanced: 10 over-estimates, 9 under-estimates.
-- **Grouped bar charts**: 18 off-by-1, 4 off-by-2. The off-by-2 cases involve very small ground truth values (5 and 8), where bars are short relative to the chart height.
-- **Line charts**: 9 off-by-1, 2 off-by-2.
-
-In 19 of 22 bar/grouped error-producing images, both prompt variants give the same wrong answer — the error is in the visual perception, not prompt interpretation.
-
-An interesting non-monotonic pattern with `n_categories` (bar charts, exact match without labels):
-
-| n_categories | Bar accuracy | Grouped accuracy |
-|-------------|-------------|-----------------|
-| 3 | 20% | 20% |
-| 5 | **100%** | **90%** |
-| 7 | 40% | 40% |
-| 10 | 50% | 30% |
-
-n_categories=3 is paradoxically the hardest (wider bars, coarser y-axis scale makes fine-grained estimation harder), while n_categories=5 is easiest (gridline spacing may align better with generated values). This pattern deserves further investigation but doesn't affect the core finding: **localization is 100% — the model always finds the right bar, it just can't estimate the exact pixel height.**
+**Annotations still hurt for line charts** — with many overlapping series, value labels from adjacent lines create confusion. The model grabs a nearby label from the wrong series. Without labels, it estimates from gridlines and performs better overall.
 
 ---
 
@@ -228,16 +219,17 @@ This generalizes: visually narrow characters (`l`, `i`, `t`) in contexts where t
 
 ### What's Solved
 
-Spatial localization in **structured, unambiguous layouts** is effectively a solved capability for Haiku 4.5:
+Spatial localization in **structured, low-density layouts** is effectively solved:
 - Grid/table lookup: 100% up to 10×5
 - Diagram decision-following: 100% across all complexity levels
-- Chart element identification: 100% (the model always finds the right bar/line/point)
+- Simple bar chart value reading: 100%
+- Multi-series charts at 2-3 series: 97-100%
 
 ### Where It Breaks Down
 
-Failures cluster around three mechanisms:
+Failures cluster around three mechanisms, all driven by visual density:
 
-1. **Series/label attribution in dense charts** — When multiple value labels are visually proximate (especially in multi-series line charts), the model correctly localizes the x-axis position but grabs the wrong series' label. This produces catastrophic errors (off by 4–86) and, paradoxically, makes annotated charts *less* reliable than unannotated ones for multi-series contexts.
+1. **Series confusion in dense charts** — Grouped bar and line chart value reading degrade from ~100% at 2-3 series to ~50% at 9-10 series. The model correctly localizes the x position but attributes the value to the wrong series. Annotations make this worse for line charts (80% without labels vs 72% with) because the model grabs a nearby label from the wrong series.
 
 2. **Arrow tracing through visual clutter** — In complex DAGs where multiple arrows converge on a shared terminal node, the model follows the wrong arrow. This is specific to the topology — cascaded decision nodes where 3+ leaf-branch arrows cross each other on the way to "End".
 
@@ -245,6 +237,6 @@ Failures cluster around three mechanisms:
 
 ### Implications for Fine-Tuning
 
-- **Multi-series chart training data should include dense annotation layouts** with close-proximity data points. Chain-of-thought grounding ("I see three lines; the green line labeled 'Wholesale' passes through 90 at Jun") could force the model to verify label-line association explicitly.
+- **Multi-series chart training should sweep series count from 2 to 10+.** The 2-3 series case is solved; training signal comes from 5+ series where series attribution breaks down. Chain-of-thought grounding ("I see the green line labeled 'Wholesale'; at Apr it passes through 78") could force explicit label-line verification.
 - **Diagram training should emphasize complex topologies** with converging arrows, not just linear/single-branch layouts where the model already excels.
 - **Character-level localization tasks** would benefit from training on overlaid annotations (circles, arrows, highlights) at various sizes and positions, with emphasis on narrow characters and mixed-case strings that defeat language priors.

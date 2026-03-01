@@ -266,7 +266,11 @@ def generate(
                                 fpath, "chart_line_trend", actual_trend,
                                 subtask=f"line_trend_{actual_trend}",
                                 metadata={"chart_type": "line", "trend": actual_trend,
-                                          "first_series_values": first_vals},
+                                          "n_categories": n_cat, "n_series": n_series,
+                                          "show_grid": show_grid, "show_values": show_vals,
+                                          "first_series_values": first_vals,
+                                          "series_name": series[0]},
+                                series=series[0],
                             ))
 
                             # Q3: count lines
