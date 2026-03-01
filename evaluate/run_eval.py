@@ -12,9 +12,25 @@ from tqdm import tqdm
 
 import config
 from evaluate.api import query_model
-from evaluate.prompts import SYSTEM_PROMPT
+from evaluate.prompts import PROMPTS, SYSTEM_PROMPT
 from evaluate.score import score_instance
 from generate.base import TaskInstance
+
+
+def validate_instances(instances: list[TaskInstance]) -> dict:
+    """Check instances for issues before making API calls.
+
+    Returns a dict with:
+      missing_images: instances whose image file doesn't exist on disk
+      stale_prompts:  instances whose prompt is no longer in the current PROMPTS dict
+                      (only checked for task_types managed by our PROMPTS system)
+    """
+    missing_images = [inst for inst in instances if not os.path.exists(inst.image_path)]
+    stale_prompts = [
+        inst for inst in instances
+        if inst.task_type in PROMPTS and inst.prompt not in PROMPTS[inst.task_type]
+    ]
+    return {"missing_images": missing_images, "stale_prompts": stale_prompts}
 
 
 def _load_completed(results_path: str) -> set[str]:
@@ -77,6 +93,24 @@ def run_evaluation(
         List of result dicts.
     """
     os.makedirs(os.path.dirname(results_path), exist_ok=True)
+
+    # --- pre-eval validation ---
+    issues = validate_instances(instances)
+    if issues["missing_images"]:
+        paths = "\n    ".join(i.image_path for i in issues["missing_images"][:5])
+        extra = len(issues["missing_images"]) - 5
+        print(f"  WARNING: {len(issues['missing_images'])} image(s) missing from disk "
+              f"(will produce ERROR results):")
+        print(f"    {paths}" + (f"\n    ... and {extra} more" if extra > 0 else ""))
+    if issues["stale_prompts"]:
+        by_type: dict[str, int] = {}
+        for inst in issues["stale_prompts"]:
+            by_type[inst.task_type] = by_type.get(inst.task_type, 0) + 1
+        summary = ", ".join(f"{t}: {n}" for t, n in sorted(by_type.items()))
+        print(f"  WARNING: {len(issues['stale_prompts'])} instance(s) have prompts that "
+              f"no longer match PROMPTS ({summary}).")
+        print(f"  Re-run with --generate-only to refresh instances, then re-eval.")
+
     completed = _load_completed(results_path)
 
     # Filter to only pending instances

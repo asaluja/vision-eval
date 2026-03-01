@@ -51,9 +51,26 @@ After generation completes, report:
 - Total images created
 - Sample a few image paths so the user can spot-check visually if desired
 
+Then run a pre-eval validation check by loading the generated instances and calling `validate_instances`:
+```python
+from generate.base import load_instances
+from evaluate.run_eval import validate_instances
+
+instances = load_instances("results/<task>_instances.jsonl")
+issues = validate_instances(instances)
+print(f"Missing images: {len(issues['missing_images'])}")
+print(f"Stale prompts:  {len(issues['stale_prompts'])}")
+```
+
+Report the results:
+- If missing images > 0: **block on this** — generation failed or paths moved. Do not proceed to eval.
+- If stale prompts > 0: warn the user (instances.jsonl has old prompt text that no longer matches PROMPTS). The fix is to re-run generation, which will happen automatically if the user re-runs Step 2.
+- If both are 0: all clear.
+
 **CHECKPOINT 2**: Ask the user:
 - Do the generation counts look right?
 - Do they want to spot-check any images before proceeding?
+- Validation results: any issues to resolve?
 - Confirm they want to proceed to evaluation (this will make API calls and cost credits).
 - How many workers to use (default 10)?
 - For multi-task generators (e.g. `chart` produces 9 task_types), should we evaluate all task_types or filter to only the ones relevant to this primitive?
