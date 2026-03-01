@@ -4,7 +4,7 @@
 Can the model distinguish colors, match legend entries to data series, and detect shade differences? This spans legend-to-bar matching, odd-shade cell detection, and heatmap value reading.
 
 ## Key Finding
-**Color discrimination is solved for visually distinct colors (100%) but degrades sharply as shades converge. At ΔL≈7 in HSL lightness (near-threshold), odd-cell detection drops to 60%. At ΔL≈5, it collapses to 21% — near random guessing. (ΔL is measured in HSL space, not perceptually uniform CIELAB; equivalent CIELAB ΔL* ranges are roughly 4–9 depending on hue.) Heatmap value reading (56%) is the hardest task, requiring color reading and continuous scale interpolation simultaneously.**
+**Color discrimination is solved for visually distinct colors (100%) but degrades sharply as shades converge. At ΔL≈7 in HSL lightness (near-threshold), odd-cell detection drops to 60%. At ΔL≈5, it collapses to 21% — near random guessing. (ΔL is measured in HSL space, not perceptually uniform CIELAB; equivalent CIELAB ΔL* ranges are roughly 4–9 depending on hue.) Heatmap value reading (56% tolerance-based accuracy) appears to be the hardest task, but MAE analysis reveals the model estimates color values at ~12% normalized error across both (0,10) and (0,100) ranges — the low accuracy on wider ranges is an artifact of systematic rounding to colorbar tick marks, not worse perception.**
 
 ## Tasks Evaluated
 
@@ -99,39 +99,61 @@ A modest ~8pp penalty for the larger grid at near-threshold, but negligible at e
 
 Overall: **55.9%** (151/270) within tolerance (max(2, gt×5%))
 
-Requires three compound operations: (1) localize the queried cell, (2) read its color, (3) map that color to a value on the colorbar.
+Requires three compound operations: (1) localize the queried cell, (2) read its color, (3) map that color to a value on the colorbar. However, **tolerance-based accuracy is misleading for this task** — MAE analysis reveals the model performs comparably across value ranges, with the accuracy gap driven by scoring granularity, not perceptual quality.
 
-**By grid size:**
+##### MAE Analysis (Primary Metric)
 
-| Grid | Accuracy | n |
-|------|----------|---|
-| 4×4 | **63.3%** | 90 |
-| 4×6 | 54.4% | 90 |
-| 6×6 | **50.0%** | 90 |
+| Range | n | MAE | NMAE (% of range) | Median AE | Tolerance Accuracy |
+|-------|---|-----|--------------------|-----------|--------------------|
+| (0, 10) | 90 | 0.92 | **9.2%** | 1.0 | 90.0% |
+| (0, 100) | 90 | 11.69 | **11.7%** | 10.0 | 15.6% |
+| (−1, 1) | 90 | 2.43 | **121.7%** | 2.0 | 62.2% |
 
-Smaller grids are easier — fewer cells, larger cell area, less crowded colorbar navigation.
+**Key insight: the (0,10) and (0,100) ranges have nearly identical normalized MAE (~9–12%).** The model performs roughly the same quality of color-to-value estimation regardless of scale. The 15.6% accuracy on (0,100) is an artifact of tight tolerance scoring (±5 for gt=100), not genuinely worse perception. On (0,10), MAE <1 easily passes the ±2 floor, inflating accuracy to 90%.
 
-**By colormap:**
+##### Systematic Rounding to Colorbar Ticks
 
-| Colormap | Accuracy | n |
-|----------|----------|---|
-| viridis | 58.9% | 90 |
-| YlOrRd | 55.6% | 90 |
-| RdBu | **53.3%** | 90 |
+On the (0,100) range, **100% of extracted values are multiples of 10** (vs. 36% of ground truth values). The model reads the cell color, finds the nearest major tick on the colorbar, and reports that value. This is not a failure of color perception — it is the natural behavior of reading a continuous color scale without fine interpolation. For (0,10), the model similarly rounds to integers, which happen to be the tick marks on that scale, and the tight spacing means rounding errors stay small.
 
-RdBu (diverging, passes through white at center) is hardest — near-neutral midrange colors are ambiguous about sign and magnitude.
-
-**Error magnitude distribution:**
+**Error distribution for (0,100) — most errors are small:**
 
 | Tolerance | Within | % |
 |-----------|--------|---|
-| Exact (±0) | 69/270 | 25.6% |
-| ±2 | 150/270 | 55.6% |
-| ±5 | 194/270 | 71.9% |
-| ±10 | 235/270 | 87.0% |
-| ±20 | 256/270 | 94.8% |
+| ±5 | 26/90 | 28.9% |
+| ±10 | 55/90 | **61.1%** |
+| ±15 | 70/90 | 77.8% |
+| ±20 | 76/90 | **84.4%** |
+| ±25 | 78/90 | 86.7% |
 
-The model is rarely wildly wrong (94.8% within ±20) but rarely precise (25.6% exact). Errors cluster in the ±5-10 range — the model reads the approximate color region correctly but cannot interpolate the colorbar precisely.
+61% of answers are within ±10 and 84% within ±20 — consistent with systematic rounding to the nearest 10.
+
+##### The (−1,1) Range is Fundamentally Broken
+
+Unlike the other ranges, the (−1,1) range reveals a genuine failure: **53% of extracted values fall outside the valid [−1, 1] range** (the model returns values like 3, 5, 6). The model does not read the colorbar scale labels — it appears to hallucinate a (0,N) range and report values from that imagined scale. With only 3 possible integer ground-truth values (−1, 0, 1), the task is also poorly suited to integer extraction. This range tests **scale label reading**, not color interpolation, and should be analyzed separately or replaced.
+
+Extracted value distribution for (−1,1): {0: 7, 1: 35, 2: 9, 3: 12, 4: 9, 5: 8, 6: 10} — the model overwhelmingly returns small positive integers regardless of the actual colorbar range.
+
+##### Breakdowns (excluding −1,1 range)
+
+**MAE by grid size (0,100 range):**
+
+| Grid | MAE | Tolerance Accuracy | n |
+|------|-----|--------------------|---|
+| 4×4 | 10.7 | 63.3% | 30 |
+| 4×6 | 11.9 | 54.4% | 30 |
+| 6×6 | 12.4 | 50.0% | 30 |
+
+Modest degradation with grid density — MAE increases ~16% from 4×4 to 6×6.
+
+**MAE by colormap (0,100 range):**
+
+| Colormap | MAE | Tolerance Accuracy | n |
+|----------|-----|--------------------|---|
+| viridis | **8.2** | 58.9% | 30 |
+| RdBu | 13.0 | 53.3% | 30 |
+| YlOrRd | **13.9** | 55.6% | 30 |
+
+Viridis (perceptually uniform, sequential) has substantially lower MAE than RdBu (diverging) or YlOrRd (sequential but non-uniform). This is consistent with viridis being designed for accurate value reading.
 
 **Extended thinking: 56.3%** (+0.4pp) — no improvement. Thinking cannot improve color-to-value interpolation; this is a perceptual precision limitation, not a reasoning one.
 
@@ -145,14 +167,17 @@ The model is rarely wildly wrong (94.8% within ±20) but rarely precise (25.6% e
 
 4. **More similar bars = harder matching, non-linearly.** Legend-to-bar matching drops from 90% (3 bars) to 62% (5 bars) in the hard condition. Each additional same-family bar compounds confusion.
 
-5. **Heatmap combines three failure modes.** Cell localization, color reading, and colorbar interpolation errors all compound. The gap between 25.6% exact and 87.0% within-±10 suggests the model can identify the approximate color region but lacks precision in continuous scale reading.
+5. **Heatmap accuracy is misleading — MAE tells the real story.** Tolerance-based accuracy (15.6% on the 0-100 range) dramatically understates performance. Normalized MAE is ~12% across both the (0,10) and (0,100) ranges — the model does equally well at color estimation regardless of scale. The bottleneck is systematic rounding to colorbar tick marks (100% of 0-100 answers are multiples of 10), not poor color perception.
 
-6. **Colorbar design matters.** Diverging colormaps (RdBu) that pass through white or near-white are harder than sequential colormaps (viridis, YlOrRd). Mid-range ambiguity is a design failure, not just a model failure.
+6. **Colorbar design matters.** Viridis (perceptually uniform) achieves MAE=8.2 vs. RdBu=13.0 and YlOrRd=13.9 on the 0-100 range. Perceptually uniform colormaps designed for accurate value reading genuinely help the model. Diverging colormaps (RdBu) that pass through white or near-white create mid-range ambiguity.
+
+7. **Non-standard colorbar ranges break scale reading.** On (−1,1), 53% of extracted values fall outside the valid range — the model hallucinates a positive integer scale rather than reading the colorbar labels. This is a distinct failure mode (scale label comprehension) from color interpolation.
 
 ## Finetuning Implications
 
 - **Near-threshold shade discrimination is the highest-value target.** The ΔL=7 regime (60%) is realistic — professional charts frequently use similar-shade families for related series. Training pairs: (color grid with ΔL=7-10 → correct odd cell) across all families, weighted toward greens/purples.
 - **DPO pairs for legend matching:** Hard-difficulty instances with n_bars=4-5 provide natural preference pairs. Rejected: model confuses dark blue for medium blue and returns wrong bar value. Preferred: correctly identifies the shade.
-- **Heatmap training should emphasize colorbar interpolation.** The main failure mode is scale reading precision, not cell localization. Training data where the model explicitly reads the colorbar ("the cell color corresponds to ≈60 on the scale") would build the color-to-value mapping.
+- **Heatmap training should target sub-tick interpolation.** The model already reads the approximate color region correctly (NMAE ~12%) but rounds to the nearest major tick mark. Training data that rewards precision between ticks ("the cell is ~65, not 70") would push past the current rounding plateau. Chain-of-thought forcing the model to explicitly reference the colorbar ("this shade is between the 60 and 70 marks, closer to 70") may help.
+- **Non-standard colorbar ranges need explicit scale-reading training.** The (−1,1) failure is not about color perception — the model doesn't read the scale labels at all. Training pairs with diverse value ranges (negative, fractional, non-zero-based) would address this.
+- **Prefer perceptually uniform colormaps.** Viridis's MAE advantage (8.2 vs. 13+) suggests training on uniform colormaps first builds a cleaner color-to-value signal before introducing diverging or non-uniform scales.
 - **Easy color discrimination needs no improvement** — distinct-color charts are already solved. Training resources should go to same-family, near-threshold cases.
-- **Avoid diverging colormaps in training eval.** RdBu's white midpoint creates genuine ambiguity. Training on sequential colormaps (viridis, YlOrRd) first builds a cleaner color-to-value signal before introducing the complexity of diverging scales.

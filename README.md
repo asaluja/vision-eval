@@ -1,96 +1,259 @@
-# Vision Eval: Characterizing Haiku 4.5 Blind Spots
+# Vision Eval: Characterizing Haiku 4.5's Perceptual Blind Spots
 
-Evaluation framework for characterizing vision blind spots in Claude Haiku 4.5, building on findings from:
-- [VLMs Are Blind](https://arxiv.org/abs/2407.06581) (Rahmanzadehgervi et al., ACCV 2024)
-- [VLMs Are Biased](https://vlmsarebiased.github.io/) (Vo et al., ICLR 2026)
+Evaluation framework for systematically mapping where Claude Haiku 4.5's vision breaks down on perception tasks. Generates synthetic test images with controlled parameter axes, evaluates via the Anthropic API, and analyzes failure patterns to inform a targeted finetuning plan.
 
-## Quick Start
+Built on findings from [VLMs Are Blind](https://arxiv.org/abs/2407.06581) (ACCV 2024) and [VLMs Are Biased](https://vlmsarebiased.github.io/) (ICLR 2026).
+
+## Key Findings
+
+The evaluation (~19K instances across 33 task types) reveals **three mechanistically distinct failure regimes**:
+
+1. **OCR-as-crutch** — The model reads text labels instead of perceiving visual content. Value-label conflicts: 0% accuracy, 100% text-reliant. Grid counting: 49% without text vs 100% with text. This silently affects every chart/table/document task.
+
+2. **Perceptual resolution limits** — Smooth degradation along psychometric curves as visual complexity increases. Path tracing drops to 10-40% with distractors; intersection detection collapses to 18% for complex lines; proximity threshold exists at distance_ratio ~0.05; color discrimination cliff at deltaL ~7-10.
+
+3. **Memorized priors override vision** — Canonical knowledge short-circuits perception. Logo element counting: 1.9% accuracy with 99.8% bias alignment. Board game dimensions: model reports canonical sizes regardless of actual dimensions.
+
+Extended thinking experiments confirm these are **perceptual failures, not reasoning failures** — thinking only helps annotation conflicts (+15pp), the one task where reasoning can override a weak visual signal.
+
+## Setup
 
 ```bash
 uv venv .venv && source .venv/bin/activate
 uv pip install -r requirements.txt
+export ANTHROPIC_API_KEY=...
+```
 
-# Generate test images only
-python run_phase1.py --generate-only --n 3
+Requires Python 3.9+. Uses `uv` for package management.
 
-# Run full evaluation
-ANTHROPIC_API_KEY=... python run_phase1.py --n 3 --workers 10
+## Usage
 
-# Interactive error analysis
+### Generate + Evaluate
+
+```bash
+# Generate test images only (no API calls)
+python run_phase1.py --generate-only --n 3 --tasks counting_circles line_intersection
+
+# Evaluate pre-generated images
+python run_phase1.py --eval-only --tasks counting_circles --workers 10
+
+# Full pipeline (generate + evaluate)
+python run_phase1.py --n 3 --workers 10
+
+# With extended thinking
+python run_phase1.py --eval-only --tasks counting_pentagons --thinking --thinking-budget 8000
+```
+
+### HuggingFace Benchmarks
+
+```bash
+# Evaluate against published benchmarks
+python run_benchmarks.py --dataset blind --tasks path_following line_intersection --workers 10
+python run_benchmarks.py --dataset biased --topics "Game Board" --workers 10
+
+# List available tasks/topics without downloading
+python run_benchmarks.py --list
+```
+
+### Interactive Analysis
+
+```bash
 streamlit run analyze/app.py
 ```
 
+The Streamlit dashboard provides accuracy breakdowns by task/subtask, metadata-based filtering, and paginated error card inspection with images.
+
+### Run Tests
+
+```bash
+python -m pytest tests/ -q   # 103 tests
+```
+
+## Architecture
+
+The pipeline has three phases: **generate → evaluate → analyze**.
+
+```
+vision-eval/
+├── run_phase1.py              # CLI: synthetic image generation + evaluation
+├── run_benchmarks.py          # CLI: HuggingFace benchmark evaluation
+├── config.py                  # Global config (model ID, paths, matplotlib backend)
+│
+├── generate/                  # Image generators
+│   ├── base.py                # TaskInstance dataclass, JSONL I/O, make_instances()
+│   ├── chart_common.py        # Shared constants for chart generators
+│   ├── counting_shapes.py     # Overlapping circles & pentagons
+│   ├── line_intersection.py   # Polyline intersection counting
+│   ├── touching_circles.py    # Proximity discrimination
+│   ├── path_following.py      # Subway-map style path tracing
+│   ├── nested_shapes.py       # Recursively nested squares
+│   ├── charts.py              # Bar, grouped bar, line charts (multi-task)
+│   ├── chart_comparison.py    # Side-by-side chart pairs for data matching
+│   ├── pie_charts.py          # Pie charts with controlled label visibility
+│   ├── heatmap.py             # Color-encoded value grids
+│   ├── tables.py              # Data tables (cell lookup, row count, max)
+│   ├── diagrams.py            # Flowcharts (node count, next-step, decisions)
+│   ├── circled_letter.py      # Letter localization under overlay
+│   ├── grid_counting.py       # Empty vs text-filled grids
+│   ├── board_games.py         # Non-standard chess/Go boards
+│   ├── patterned_grids.py     # Dice/tally grids with anomalies
+│   ├── relative_comparison.py # Controlled-difficulty bar/line comparisons
+│   ├── color_discrimination.py# Similar-shade bars + color grids
+│   ├── text_reading.py        # Words/numbers at varying size, rotation, contrast
+│   └── text_visual_conflict.py# Charts with planted text-visual contradictions
+│
+├── evaluate/                  # Evaluation harness
+│   ├── api.py                 # Anthropic API wrapper (retry, base64, thinking)
+│   ├── prompts.py             # Prompt templates (2 variants per task type)
+│   ├── score.py               # Regex extractors + score_instance() dispatcher
+│   └── run_eval.py            # ThreadPoolExecutor evaluator with resume support
+│
+├── analyze/
+│   └── app.py                 # Streamlit dashboard for error analysis
+│
+├── data/                      # HuggingFace dataset adapters
+│   ├── blind.py               # VLMs-are-Blind benchmark adapter
+│   ├── biased.py              # VLMs-are-Biased benchmark adapter (preserves expected_bias)
+│   ├── common.py              # Shared parsing utilities
+│   └── clip_dino_pairs.py     # CLIP/DINOv2 embedding analysis
+│
+├── tests/                     # 103 tests for extractors and validation
+│   ├── test_score.py
+│   └── test_run_eval.py
+│
+├── checks/                    # Diagnostic scripts for verifying summary claims
+│   ├── check_full.py          # Cross-task accuracy audit
+│   ├── check_summaries.py     # Summary claim verification
+│   ├── check_circled_letter.py# Off-by-one error analysis
+│   └── check_diag.py          # Diagram/pie chart diagnostics
+│
+├── summaries/                 # Per-primitive markdown evaluation summaries
+├── figures/                   # Generated plots, error composites, and figure scripts
+├── results/                   # JSONL instance metadata and evaluation results
+├── docs/
+│   └── task_inventory.md      # Master inventory of all 57 task entries
+├── EXTENSIONS.md              # Known issues, extensions, thinking experiments
+└── anthropic_takehome_context.md  # Full research context and literature review
+```
+
+## Core Data Type
+
+`TaskInstance` (defined in `generate/base.py`) is the unit of work throughout the pipeline:
+
+```python
+@dataclass
+class TaskInstance:
+    image_path: str        # Path to generated PNG
+    prompt: str            # Formatted evaluation prompt
+    ground_truth: Any      # Expected answer (int, str, tuple, etc.)
+    task_type: str         # e.g., "counting_circles", "chart_bar_value"
+    subtask: str           # Optional sub-categorization
+    metadata: dict         # Generator-specific params, prompt_variant index, etc.
+```
+
+Instances are serialized as JSONL via `save_instances()` / `load_instances()`.
+
+## Task Types (7 Perceptual Primitives)
+
+All 33 task types map to 7 perceptual primitives:
+
+| Primitive | Task Types | Headline Finding |
+|-----------|-----------|-----------------|
+| **Counting/Enumeration** | counting_circles, counting_pentagons, nested_squares, grid_counting, chart_bar_count, diagram_node_count, pie_slice_count, table_row_count | Solved for labeled elements (98-100%); degrades with overlap (pentagons 61.5%) and missing text cues (grids 49%) |
+| **Spatial Localization** | circled_letter, chart_bar_value, chart_grouped_value, chart_line_value, table_cell_lookup | Solved at low density (100%); series confusion at 9-10 series (~50%); adjacent-letter errors dominate circled letter |
+| **Line/Path Following** | line_intersection, path_following, chart_line_trend, diagram_next_step, diagram_decision | Sharp clutter-dependent degradation; 100% simple → 10-40% with distractors; overcounting is 97% of errors |
+| **Relative Comparison** | touching_circles, chart_bar_compare, table_max, pie_slice_compare, relative_bar/line_compare, chart_data_match | Solved down to diff=2; proximity threshold at gap ~0.05; pie (73%) much harder than bar (98%) |
+| **Color Discrimination** | chart_legend_match, color_grid_odd, heatmap_cell_value | Perceptual cliff at deltaL ~7-10; orange robust, green fragile; heatmap (56%) hardest |
+| **Text Reading** | text_word_reading, text_number_reading | Near-perfect at font >=14px; collapses below 10px; numbers degrade faster than words |
+| **Prior/Bias Override** | patterned_grid, board_game, conflict_value_label, conflict_title_trend, conflict_legend_color, conflict_annotation | Value-label conflict: 0% (always reads text); logos: 1.9% (99.8% bias-aligned); thinking only helps annotations |
+
 ## Parameter Selection Rationale
 
-The VLMs Are Blind paper systematically tested which image parameters affect VLM accuracy. We use their findings to focus evaluation on parameters that actually matter:
+Following VLMs Are Blind's methodology, generators sweep **high-signal parameters** densely while fixing low-signal ones:
 
-### High-signal parameters (swept densely)
+**Swept densely** (affect accuracy):
+- Object count, spatial overlap, text presence in grids, number of paths/distractors, shape type, font size, color similarity (deltaL)
 
-| Parameter | Finding | Citation |
-|-----------|---------|----------|
-| **Object count** | More overlapping objects = dramatically worse accuracy | §4.1, Fig 5 |
-| **Spatial proximity / overlap** | "VLMs tend to perform more poorly when circles are closer together" | §4.2, Fig 3 |
-| **Text presence in grids** | Empty grid 26% → text-filled 53% (GPT-4o); VLMs use OCR cues, not vision | §4.6, Table 3 |
-| **Number of paths** | 1 path 59% → 3 paths 26% mean accuracy | §4.7, Fig 8 |
-| **Shape type** | Pentagons significantly harder than circles | §4.4, Table 2 |
-| **Circle diameter** | Smaller circles harder for overlap detection | §4.2 |
-| **Word choice** | Random strings harder than real words for letter identification | §4.3 |
+**Fixed** (don't affect accuracy per the paper):
+- Image resolution, line width/thickness, font selection, color mode (mono vs multi)
 
-### Low-signal parameters (fixed to single value)
+Each task generates **two prompt variants** (A and B) per image for robustness testing across semantically equivalent phrasings.
 
-| Parameter | Finding | Citation |
-|-----------|---------|----------|
-| **Image resolution** | "Image resolution does not affect VLMs performance" | §A.2 |
-| **Line width/thickness** | "Line thickness does not influence VLM ability to count intersections" | §A.1 |
-| **Font selection** | "Font selection does not vary the performance of the models" | §A.3 |
-| **Color (mono vs multi)** | "Accuracy only changes marginally" | §E.2 |
-| **Prompt wording** | "Different prompts result in similar accuracy" | §A.4 |
+## How to Add a New Task
 
-## Task Types
+1. Create `generate/my_task.py` with:
+   ```python
+   def generate(n_per_config: int, output_dir: str, **kwargs) -> list[TaskInstance]:
+       ...
+   ```
+2. Add prompt templates to `evaluate/prompts.py`:
+   ```python
+   PROMPTS["my_task"] = [
+       "Variant A: {placeholder}",
+       "Variant B: {placeholder}",
+   ]
+   ```
+3. Add scoring logic to `evaluate/score.py` in `score_instance()`.
+4. Register in `TASK_REGISTRY` in `run_phase1.py`:
+   ```python
+   "my_task": ("generate.my_task", {}),
+   ```
 
-### VLMs Are Blind (perceptual primitives)
+## Evaluation Pipeline Details
 
-| Task | Generator | High-signal axes | What it tests |
-|------|-----------|-----------------|---------------|
-| Counting circles | `counting_shapes.py` | count (3-10), overlap (0.1-0.5) | Counting with overlap |
-| Counting pentagons | `counting_shapes.py` | count (3-10), overlap (0.1-0.5) | Shape-dependent counting |
-| Line intersections | `line_intersection.py` | n_intersections (0-2) | Spatial precision |
-| Nested squares | `nested_shapes.py` | depth (2-7) | Nested structure counting |
-| Touching circles | `touching_circles.py` | distance (-0.4 to 0.6), radius | Proximity discrimination |
-| Circled letter | `circled_letter.py` | word, target position | Spatial localization |
-| Grid counting | `grid_counting.py` | grid size, with/without text | Row/col counting |
-| Path following | `path_following.py` | n_paths (1-6) | Line following |
+**API calls**: `evaluate/api.py` wraps the Anthropic SDK with `temperature=0`, base64 image encoding, exponential backoff on rate limits, and optional extended thinking support.
 
-### VLMs Are Biased (prior override)
+**Scoring**: `evaluate/score.py` uses regex-based extractors (numbers, yes/no, letters, row/col tuples, trends, free text) with a dispatcher that routes by `task_type`. Numeric tasks use tolerance-based matching (max(2, value * 0.05)) for chart/continuous readings.
 
-| Task | Generator | High-signal axes | What it tests |
-|------|-----------|-----------------|---------------|
-| Patterned grids | `patterned_grids.py` | grid type (dice/tally), anomaly type | Counting vs. pattern bias |
-| Board games | `board_games.py` | game type, dimension variants | Dimension counting vs. canonical bias |
+**Concurrency**: `evaluate/run_eval.py` uses `ThreadPoolExecutor` (default 10 workers) with thread-safe incremental result writing and resume support (skips already-evaluated `(image_path, prompt)` pairs).
 
-## Project Structure
+**Pre-eval validation**: Checks for missing images and stale prompts (from regeneration) before making API calls.
 
-```
-├── run_phase1.py           # CLI runner (--generate-only, --eval-only, --tasks, --n, --workers)
-├── config.py               # Model config, paths
-├── generate/               # Image generators (one per task type)
-│   ├── base.py             # TaskInstance dataclass, JSONL I/O
-│   ├── counting_shapes.py  # Circles + pentagons
-│   ├── line_intersection.py
-│   ├── nested_shapes.py
-│   ├── touching_circles.py
-│   ├── circled_letter.py
-│   ├── grid_counting.py
-│   ├── path_following.py
-│   ├── patterned_grids.py
-│   └── board_games.py
-├── evaluate/               # Evaluation harness
-│   ├── api.py              # Anthropic API wrapper (retry, rate limiting)
-│   ├── prompts.py          # Prompt templates per task
-│   ├── score.py            # Answer extraction + scoring
-│   └── run_eval.py         # Concurrent evaluation orchestrator
-├── analyze/
-│   └── app.py              # Streamlit error analysis UI
-├── results/                # Evaluation results (JSONL)
-└── figures/                # Charts for report
-```
+## Outputs
+
+| Directory | Contents |
+|-----------|----------|
+| `results/` | JSONL files only — instance metadata (`*_instances.jsonl`) and evaluation results (`*_results.jsonl`) |
+| `summaries/` | Per-primitive markdown evaluation summaries (7 primitives + finetuning plan) |
+| `figures/` | Accuracy charts, error composite images, and the Python scripts that generate them |
+| `generate/images/` | Generated PNGs organized by task type (gitignored, reproducible) |
+
+## Finetuning Plan (Summary)
+
+The report proposes a three-stage training pipeline:
+
+1. **SFT (~330K examples)**: Break OCR dependency by training on charts without/with deliberately wrong labels, using chain-of-thought visual grounding ("The gridlines are at 0, 20, 40. The bar extends just above 80...").
+
+2. **DPO (~40K pairs)**: Target the 0% value-label conflict directly — every instance produces a clean preference pair (chosen: visual estimation; rejected: model's text-reading output). Additional pairs from proximity thresholds, color discrimination edges, and path overcounts.
+
+3. **RL with verifiable rewards (~225K episodes)**: Push along smooth degradation curves using curricula that start where the model succeeds and advance into failure regimes. All tasks have exactly computable ground truth.
+
+See `summaries/finetuning_plan_summary.md` for the full plan with sample training data.
+
+## Key Files for Orientation
+
+If you're picking up this repo, start here:
+
+1. **`anthropic_takehome_context.md`** — Full research context, literature review, and assignment spec
+2. **`summaries/`** — Read any primitive summary to understand the evaluation methodology and findings
+3. **`docs/task_inventory.md`** — Master inventory of all 57 task entries with primitive mappings
+4. **`EXTENSIONS.md`** — Known issues (patterned grid bug), the image-pair paradigm, and thinking experiment results
+5. **`CLAUDE.md`** — Detailed developer instructions for Claude Code, including conventions and the task registry
+
+## Dependencies
+
+- `anthropic>=0.40.0` — Anthropic Python SDK
+- `Pillow>=10.0` — Image generation
+- `matplotlib>=3.8` — Chart/figure generation
+- `numpy>=1.26`, `pandas>=2.0` — Numerical/data analysis
+- `tqdm>=4.66` — Progress bars
+- `datasets>=2.16` — HuggingFace datasets
+- `streamlit>=1.30` — Interactive dashboard
+- `torch>=2.0`, `transformers>=4.36` — CLIP/DINOv2 embedding analysis
+- `pytest>=8.0` — Testing
+
+## Platform Notes
+
+- **macOS**: `config.py` sets `matplotlib.use("Agg")` before any pyplot import (required for headless rendering). Always `import config` before importing pyplot.
+- **Python 3.9**: Uses `from __future__ import annotations` for `X | Y` union syntax.
+- **Model**: All evaluation targets `claude-haiku-4-5-20251001` (set in `config.py`).
