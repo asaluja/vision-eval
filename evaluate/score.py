@@ -110,12 +110,12 @@ def score_instance(task_type: str, ground_truth: Any, response: str, metadata: d
     """
     result = {"ground_truth": ground_truth, "response": response, "extracted": None, "correct": False}
 
-    # Numeric tasks
+    # Numeric tasks (exact match)
     if task_type in ("counting_circles", "counting_pentagons", "line_intersection",
                      "nested_squares", "path_following", "patterned_grid",
                      "board_game_rows", "board_game_cols", "board_game",
-                     "chart_bar_value", "chart_bar_count", "chart_grouped_value",
-                     "chart_line_value", "chart_line_count",
+                     "chart_bar_count", "chart_series_count", "chart_bar_count_total",
+                     "chart_line_count",
                      "table_cell_lookup", "table_row_count",
                      "diagram_node_count",
                      "text_number_reading"):
@@ -123,6 +123,18 @@ def score_instance(task_type: str, ground_truth: Any, response: str, metadata: d
         result["extracted"] = extracted
         if extracted is not None:
             result["correct"] = (extracted == int(ground_truth))
+
+    # Chart value reading (tolerance-based: model must estimate from visual)
+    elif task_type in ("chart_bar_value", "chart_grouped_value", "chart_line_value"):
+        extracted = extract_number(response)
+        result["extracted"] = extracted
+        if extracted is not None:
+            gt = int(ground_truth)
+            error = abs(extracted - gt)
+            # Tolerance: within 5% of the value or ±2, whichever is larger
+            tolerance = max(2, gt * 0.05)
+            result["correct"] = (error <= tolerance)
+            result["error"] = error
 
     # Yes/No tasks
     elif task_type in ("touching_circles", "optical_illusion"):

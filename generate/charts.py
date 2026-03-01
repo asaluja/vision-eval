@@ -28,9 +28,9 @@ TEAM_LABELS = ["Team 1", "Team 2", "Team 3", "Team 4",
                "Team 5", "Team 6", "Team 7", "Team 8"]
 
 SERIES_NAMES = [
-    ["Revenue", "Cost", "Profit"],
-    ["2023", "2024", "2025"],
-    ["Online", "In-Store", "Wholesale"],
+    ["Revenue", "Cost", "Profit", "Tax", "Margin", "COGS", "Net", "Debt", "Equity", "Dividends"],
+    ["2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023", "2024", "2025"],
+    ["Online", "In-Store", "Wholesale", "Direct", "Partner", "Reseller", "OEM", "Retail", "B2B", "Export"],
 ]
 
 COLORS = list(matplotlib.cm.tab10.colors[:10])
@@ -116,6 +116,7 @@ def generate(
     chart_types: list[str] | None = None,
     show_grids: list[bool] | None = None,
     show_values_list: list[bool] | None = None,
+    n_series_list: list[int] | None = None,
 ) -> list[TaskInstance]:
     """Generate chart images with multiple questions per chart."""
     if n_categories_list is None:
@@ -126,6 +127,8 @@ def generate(
         show_grids = [False, True]
     if show_values_list is None:
         show_values_list = [False, True]
+    if n_series_list is None:
+        n_series_list = [2, 3, 4, 5, 6, 7, 8, 9, 10]
 
     out = ensure_dir(os.path.join(output_dir, "charts"))
     instances = []
@@ -180,7 +183,7 @@ def generate(
                             ))
 
                         elif ctype == "grouped_bar":
-                            n_series = random.choice([2, 3])
+                          for n_series in n_series_list:
                             series = random.choice(SERIES_NAMES)[:n_series]
                             data = [[random.randint(5, 95) for _ in range(n_cat)]
                                     for _ in range(n_series)]
@@ -203,19 +206,24 @@ def generate(
                                 series=series[s_idx], category=categories[c_idx],
                             ))
 
-                            # Q2: count bars per group (n_series)
-                            instances.append(TaskInstance(
-                                image_path=os.path.abspath(fpath),
-                                prompt="How many different colored bar groups are shown in each category? "
-                                       "Answer with a number in curly braces, e.g. {3}.",
-                                ground_truth=n_series,
-                                task_type="chart_bar_count",
-                                subtask=f"grouped_series_count",
-                                metadata={"chart_type": "grouped_bar", "n_series": n_series},
+                            # Q2: count series (how many colored groups per category)
+                            instances.extend(make_instances(
+                                fpath, "chart_series_count", n_series,
+                                subtask=f"grouped_series_count_s{n_series}",
+                                metadata={"chart_type": "grouped_bar", "n_series": n_series,
+                                          "n_categories": n_cat},
+                            ))
+
+                            # Q3: count total bars (n_categories * n_series)
+                            instances.extend(make_instances(
+                                fpath, "chart_bar_count_total", n_cat * n_series,
+                                subtask=f"grouped_total_n{n_cat}_s{n_series}",
+                                metadata={"chart_type": "grouped_bar", "n_series": n_series,
+                                          "n_categories": n_cat, "total_bars": n_cat * n_series},
                             ))
 
                         elif ctype == "line":
-                            n_series = random.choice([1, 2, 3])
+                          for n_series in n_series_list:
                             series = random.choice(SERIES_NAMES)[:n_series]
                             # Generate data with a clear trend for the first series
                             base = random.randint(10, 40)
@@ -235,17 +243,19 @@ def generate(
                             fpath = os.path.join(out, fname)
                             _make_line_chart(x_labels, data, series, show_grid, show_vals, fpath)
 
-                            # Q1: value at point (random x)
+                            # Q1: value at point (random x, random series)
                             x_idx = random.randint(0, n_cat - 1)
+                            s_idx = random.randint(0, n_series - 1)
                             instances.extend(make_instances(
-                                fpath, "chart_line_value", data[0][x_idx],
+                                fpath, "chart_line_value", data[s_idx][x_idx],
                                 subtask=f"line_n{n_cat}_s{n_series}",
                                 metadata={"chart_type": "line", "n_categories": n_cat,
                                           "n_series": n_series, "show_grid": show_grid,
                                           "show_values": show_vals,
                                           "x_labels": x_labels, "data": data,
-                                          "series": series, "query_x": x_labels[x_idx]},
-                                x_label=x_labels[x_idx],
+                                          "series": series, "query_x": x_labels[x_idx],
+                                          "query_series": series[s_idx]},
+                                x_label=x_labels[x_idx], series=series[s_idx],
                             ))
 
                             # Q2: trend direction (first series)

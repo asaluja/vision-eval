@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
 
 
-@st.cache_data
+@st.cache_data(ttl=60)
 def load_results() -> pd.DataFrame:
     """Load all *_results.jsonl files into a single DataFrame."""
     rows = []

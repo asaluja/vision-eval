@@ -139,49 +139,185 @@ def _build_single_branch(n_steps: int) -> FlowChart:
     return fc
 
 
-def _layout(fc: FlowChart):
-    """Assign (x, y) positions to nodes using simple top-down layout."""
-    # Identify branch structure
-    yes_nodes = {n.id for n in fc.nodes if n.id.startswith("yes")}
-    no_nodes = {n.id for n in fc.nodes if n.id.startswith("no")}
-    has_branches = bool(yes_nodes or no_nodes)
+def _build_multi_decision(n_steps: int) -> FlowChart:
+    """Build a flowchart with 2 cascaded decisions and asymmetric branches.
 
-    y = 0.0
+    Structure: Start → pre → D1 → (Yes: steps → D2 → (Yes: steps) / (No: steps))
+                                  / (No: steps) → End
+    """
+    fc = FlowChart()
+    labels = random.sample(PROCESS_LABELS, min(n_steps + 4, len(PROCESS_LABELS)))
+    d_labels = random.sample(DECISION_LABELS, 2)
+
+    fc.nodes.append(FlowNode("start", "Start", "start"))
+
+    # 1 pre-decision step
+    fc.nodes.append(FlowNode("pre0", labels.pop(0), "process"))
+
+    # First decision
+    fc.nodes.append(FlowNode("d0", d_labels[0], "decision"))
+
+    # D0-No branch: 1-2 steps → end
+    n_d0_no = random.randint(1, min(2, len(labels) - 4))
+    for i in range(n_d0_no):
+        fc.nodes.append(FlowNode(f"d0no{i}", labels.pop(0), "process"))
+
+    # D0-Yes branch: 1 step → second decision
+    fc.nodes.append(FlowNode("d0yes0", labels.pop(0), "process"))
+
+    # Second decision
+    fc.nodes.append(FlowNode("d1", d_labels[1], "decision"))
+
+    # D1-Yes branch: 1-2 steps
+    n_d1_yes = random.randint(1, min(2, len(labels) - 2))
+    for i in range(n_d1_yes):
+        fc.nodes.append(FlowNode(f"d1yes{i}", labels.pop(0), "process"))
+
+    # D1-No branch: 1-2 steps
+    n_d1_no = random.randint(1, min(2, len(labels)))
+    for i in range(n_d1_no):
+        fc.nodes.append(FlowNode(f"d1no{i}", labels.pop(0), "process"))
+
+    fc.nodes.append(FlowNode("end", "End", "end"))
+
+    # Wire edges
+    fc.edges.append(FlowEdge("start", "pre0"))
+    fc.edges.append(FlowEdge("pre0", "d0"))
+
+    # D0-No branch
+    prev = "d0"
+    for i in range(n_d0_no):
+        fc.edges.append(FlowEdge(prev, f"d0no{i}", "No" if prev == "d0" else ""))
+        prev = f"d0no{i}"
+    fc.edges.append(FlowEdge(prev, "end"))
+
+    # D0-Yes → process → D1
+    fc.edges.append(FlowEdge("d0", "d0yes0", "Yes"))
+    fc.edges.append(FlowEdge("d0yes0", "d1"))
+
+    # D1-Yes branch
+    prev = "d1"
+    for i in range(n_d1_yes):
+        fc.edges.append(FlowEdge(prev, f"d1yes{i}", "Yes" if prev == "d1" else ""))
+        prev = f"d1yes{i}"
+    fc.edges.append(FlowEdge(prev, "end"))
+
+    # D1-No branch
+    prev = "d1"
+    for i in range(n_d1_no):
+        fc.edges.append(FlowEdge(prev, f"d1no{i}", "No" if prev == "d1" else ""))
+        prev = f"d1no{i}"
+    fc.edges.append(FlowEdge(prev, "end"))
+
+    return fc
+
+
+def _build_asymmetric(n_steps: int) -> FlowChart:
+    """Build a decision with heavily asymmetric branches (1 vs 3-4 steps)."""
+    fc = FlowChart()
+    labels = random.sample(PROCESS_LABELS, min(n_steps + 3, len(PROCESS_LABELS)))
+    decision_label = random.choice(DECISION_LABELS)
+
+    fc.nodes.append(FlowNode("start", "Start", "start"))
+    fc.nodes.append(FlowNode("d0", decision_label, "decision"))
+
+    # Short branch (Yes): 1 step
+    fc.nodes.append(FlowNode("yes0", labels.pop(0), "process"))
+
+    # Long branch (No): 3-4 steps
+    n_long = min(random.randint(3, 4), len(labels))
+    for i in range(n_long):
+        fc.nodes.append(FlowNode(f"no{i}", labels.pop(0), "process"))
+
+    fc.nodes.append(FlowNode("end", "End", "end"))
+
+    # Edges
+    fc.edges.append(FlowEdge("start", "d0"))
+    fc.edges.append(FlowEdge("d0", "yes0", "Yes"))
+    fc.edges.append(FlowEdge("yes0", "end"))
+
+    prev = "d0"
+    for i in range(n_long):
+        fc.edges.append(FlowEdge(prev, f"no{i}", "No" if prev == "d0" else ""))
+        prev = f"no{i}"
+    fc.edges.append(FlowEdge(prev, "end"))
+
+    return fc
+
+
+def _layout(fc: FlowChart):
+    """Assign (x, y) positions to nodes using BFS-based layout.
+
+    Uses the edge structure to place nodes, handling arbitrary DAG topologies
+    including multi-decision cascades and asymmetric branches.
+    """
     row_height = 1.5
-    center_x = 0.0
     branch_offset = 2.5
 
-    for node in fc.nodes:
-        if node.node_type == "start":
-            node.x, node.y = center_x, y
-            y -= row_height
-        elif node.id.startswith("pre") or (node.node_type == "process" and not has_branches):
-            node.x, node.y = center_x, y
-            y -= row_height
-        elif node.node_type == "decision":
-            node.x, node.y = center_x, y
-            y -= row_height
-        elif node.id.startswith("yes"):
-            idx = int(node.id[3:])
-            node.x = -branch_offset
-            node.y = y - idx * row_height
-        elif node.id.startswith("no"):
-            idx = int(node.id[2:])
-            node.x = branch_offset
-            node.y = y - idx * row_height
-        elif node.node_type == "end":
-            # Place end below the deepest branch node
-            all_ys = [n.y for n in fc.nodes if n.id != "end"]
-            node.x = center_x
-            node.y = min(all_ys) - row_height
+    # Build adjacency for BFS
+    children = {}  # node_id -> [(child_id, edge_label)]
+    for edge in fc.edges:
+        children.setdefault(edge.source, []).append((edge.target, edge.label))
 
-    # For linear charts (no branches), just stack vertically
-    if not has_branches:
-        y = 0.0
-        for node in fc.nodes:
-            node.x = center_x
-            node.y = y
-            y -= row_height
+    # Track which nodes have been placed
+    placed = set()
+
+    def _place(node_id: str, x: float, y: float):
+        node = fc.node_by_id(node_id)
+        if not node or node_id in placed:
+            return y
+        node.x, node.y = x, y
+        placed.add(node_id)
+
+        kids = children.get(node_id, [])
+        if not kids:
+            return y
+
+        # Decision node: branch left (Yes) and right (No)
+        if node.node_type == "decision":
+            yes_kids = [(cid, lbl) for cid, lbl in kids if lbl == "Yes"]
+            no_kids = [(cid, lbl) for cid, lbl in kids if lbl == "No"]
+            other_kids = [(cid, lbl) for cid, lbl in kids if lbl not in ("Yes", "No")]
+
+            lowest_y = y
+            # Yes branch goes left
+            cy = y - row_height
+            for cid, _ in yes_kids:
+                cy = _place(cid, x - branch_offset, cy)
+                cy -= row_height
+            lowest_y = min(lowest_y, cy)
+
+            # No branch goes right
+            cy = y - row_height
+            for cid, _ in no_kids:
+                cy = _place(cid, x + branch_offset, cy)
+                cy -= row_height
+            lowest_y = min(lowest_y, cy)
+
+            # Unlabeled edges go center
+            for cid, _ in other_kids:
+                lowest_y = min(lowest_y, _place(cid, x, lowest_y))
+                lowest_y -= row_height
+
+            return lowest_y
+        else:
+            # Non-decision: place children below, center-aligned
+            cy = y - row_height
+            for cid, _ in kids:
+                if cid not in placed:
+                    cy = _place(cid, x, cy)
+                    cy -= row_height
+            return cy
+
+    _place("start", 0.0, 0.0)
+
+    # Place end node below everything
+    end_node = fc.node_by_id("end")
+    if end_node and "end" not in placed:
+        all_ys = [n.y for n in fc.nodes if n.id != "end" and n.id in placed]
+        end_node.x = 0.0
+        end_node.y = min(all_ys) - row_height if all_ys else -row_height
+        placed.add("end")
 
 
 def _draw_flowchart(fc: FlowChart, output_path: str):
@@ -284,7 +420,7 @@ def generate(
 ) -> list[TaskInstance]:
     """Generate flowchart images with multiple questions per diagram."""
     if templates is None:
-        templates = ["linear", "single_branch"]
+        templates = ["linear", "single_branch", "multi_decision", "asymmetric"]
     if n_steps_list is None:
         n_steps_list = [3, 5, 7]
 
@@ -301,6 +437,10 @@ def generate(
                     fc = _build_linear(n_steps)
                 elif template == "single_branch":
                     fc = _build_single_branch(n_steps)
+                elif template == "multi_decision":
+                    fc = _build_multi_decision(n_steps)
+                elif template == "asymmetric":
+                    fc = _build_asymmetric(n_steps)
                 else:
                     fc = _build_linear(n_steps)
 

@@ -113,6 +113,20 @@ PROMPTS = {
         "Count the total number of bars in this chart. "
         "Put your answer in curly braces, e.g. {{5}}.",
     ],
+    "chart_series_count": [
+        "How many different colored bar groups are shown in each category? "
+        "Answer with a number in curly braces, e.g. {{3}}.",
+
+        "How many data series are represented in this grouped bar chart? "
+        "Answer with a number in curly braces, e.g. {{3}}.",
+    ],
+    "chart_bar_count_total": [
+        "How many individual bars are shown in total in this chart? "
+        "Answer with a number in curly braces, e.g. {{12}}.",
+
+        "Count every single bar in this chart. "
+        "Put the total in curly braces, e.g. {{12}}.",
+    ],
     "chart_grouped_value": [
         "What is the value of {series} for {category}? "
         "Answer with a number in curly braces, e.g. {{42}}.",
@@ -121,10 +135,10 @@ PROMPTS = {
         "Put the value in curly braces, e.g. {{42}}.",
     ],
     "chart_line_value": [
-        "What is the value at {x_label}? "
+        "What is the value of {series} at {x_label}? "
         "Answer with a number in curly braces, e.g. {{42}}.",
 
-        "Read the data point at {x_label}. "
+        "Read the {series} data point at {x_label}. "
         "Put the value in curly braces, e.g. {{42}}.",
     ],
     "chart_line_trend": [
@@ -146,8 +160,8 @@ PROMPTS = {
         "What is the value in the {row_header} row and {col_header} column? "
         "Answer in curly braces, e.g. {{42}}.",
 
-        "Look up the cell where the {row_header} row meets the {col_header} column. "
-        "What value is there? Answer in curly braces, e.g. {{42}}.",
+        "What is {row_header}'s {col_header}? "
+        "Answer in curly braces, e.g. {{42}}.",
     ],
     "table_row_count": [
         "How many data rows does this table have (excluding the header row)? "
