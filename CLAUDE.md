@@ -92,4 +92,4 @@ Multi-task generators (`chart`, `table`, `diagram`) produce several task_types e
 - `MODEL_ID` in `config.py` is `claude-haiku-4-5-20251001` — all evaluation targets this model.
 - Requires `from __future__ import annotations` for `X | Y` union syntax (Python 3.9).
 - Uses `uv` for virtual environment and package management.
-- All output figures/plots go in `figures/`, not `results/`. The `results/` directory is for JSONL data and `report.html` only. Summaries go in `summaries/`.
+- All output figures/plots go in `figures/`, not `results/`. The `results/` directory is for JSONL data only. Summaries go in `summaries/`. HTML reports (`report.html`) go in the project root.

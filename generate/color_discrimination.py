@@ -13,9 +13,9 @@ from __future__ import annotations
 import os
 import random
 
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-import numpy as np
 
 from generate.base import ensure_dir, make_instances
 

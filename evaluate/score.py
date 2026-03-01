@@ -94,11 +94,9 @@ def extract_trend(response: str) -> str | None:
         return "increasing"
     if "decreasing" in text and "increasing" not in text:
         return "decreasing"
-    # Both present — take the one in braces or first occurrence
+    # Both present — default to "increasing" (ambiguous case)
     if "increasing" in text:
         return "increasing"
-    if "decreasing" in text:
-        return "decreasing"
     return None
 
 

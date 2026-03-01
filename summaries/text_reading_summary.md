@@ -4,120 +4,151 @@
 Can the model read text at varying sizes, rotations, and contrast levels? This isolates the OCR capability that all chart, table, and document tasks depend on.
 
 ## Key Finding
-**Text reading is near-solved for words (96.3%) and chart labels (100%) but degrades for isolated numbers at small sizes with rotation (81%). The model leverages lexical priors for words — guessing plausible words from partial visual information — but numbers lack this cue, exposing raw OCR limitations. At font=10 + 90° rotation, word accuracy drops to 47% and number accuracy to 0%.**
+**Text reading is solved at font ≥14px (≥95% across all rotations), but collapses rapidly below 10px. Font=8px drops to 45% for words and 20% for numbers. Font=6px is near-zero (13% words, 10% numbers). Numbers degrade faster than words at every size because the model's lexical priors can rescue partial word recognition but provide no fallback for digits. At font=8+rotation, the model hallucinates plausible-looking but completely wrong words.**
 
 ## Tasks Evaluated
 
-### Ceiling Tasks (100% exact match)
+### Ceiling Tasks (≥95% accuracy)
 
-| Task | n | Source | Notes |
-|------|---|--------|-------|
-| Chart axis label reading | 60 | Generated | Font 7-12px, rotation 0-60°, all configs 100% |
-| Word reading (font ≥20px) | 225 | Generated | All rotations, all contrasts, perfect |
-| Number reading (font ≥32px) | 40 | Generated | All rotations perfect |
+| Task | Accuracy | n | Condition |
+|------|----------|---|-----------|
+| `text_word_reading` (font=20) | 100% | 150 | All rotations, all contrasts |
+| `text_word_reading` (font=14) | 97.3% | 150 | All rotations, all contrasts |
+| `text_number_reading` (font=14) | 95.0% | 40 | All rotations |
+| `text_number_reading` (font=20) | 82.5% | 40 | Degrades at 45° rotation |
 
-Chart axis labels are perfectly readable even at the smallest tested font (7px) with 60° rotation. This is likely because matplotlib renders labels at higher effective resolution than our isolated text images, and the chart context provides structural cues.
-
-Word reading is robust down to font=20px across all rotations (0-90°) and all contrast levels (high/medium/low). The model's vocabulary knowledge compensates for visual degradation.
+Font ≥14px is readable under any rotation (0-90°) and contrast condition tested.
 
 ### Degrading Tasks
 
-#### Isolated Word Reading
+#### Isolated Word Reading (`text_word_reading`)
 
-**Overall: 96.3%** (361/375)
+Overall: **67.7%** (508/750) — across font=[20,14,10,8,6] × rotation=[0,15,30,45,90°] × contrast=[high,medium,low]
 
-**By font_size × rotation (all contrasts):**
+**By font_size:**
 
-| Font | rot=0 | rot=15 | rot=30 | rot=45 | rot=90 |
-|------|-------|--------|--------|--------|--------|
-| 48 | 100% | 100% | 100% | 100% | 100% |
-| 32 | 100% | 100% | 100% | 100% | 100% |
-| 20 | 100% | 100% | 100% | 100% | 100% |
-| 14 | 100% | 100% | 100% | 87% | 100% |
-| **10** | **100%** | **100%** | **87%** | **87%** | **47%** |
+| Font | Accuracy | n |
+|------|----------|---|
+| 20px | 100.0% | 150 |
+| 14px | 97.3% | 150 |
+| 10px | 83.3% | 150 |
+| 8px | **45.3%** | 150 |
+| 6px | **12.7%** | 150 |
 
-Errors are concentrated exclusively at font=10 (the smallest size), and primarily at 90° rotation. At font=14, only 2 errors appear (both at 45° rotation).
+The cliff between 10px (83%) and 8px (45%) is the key finding — a 2px reduction causes a ~40pp drop. At 6px, the model is near-random.
 
-**Font=10, rotation × contrast:**
+**By rotation:**
 
-| Rotation | High | Medium | Low |
-|----------|------|--------|-----|
-| 0° | 100% | 100% | 100% |
-| 15° | 100% | 100% | 100% |
-| 30° | 100% | 80% | 80% |
-| 45° | 100% | 80% | 80% |
-| 90° | 80% | **0%** | 60% |
+| Rotation | Accuracy | n |
+|----------|----------|---|
+| 0° | 91.3% | 150 |
+| 15° | 76.7% | 150 |
+| 30° | 63.3% | 150 |
+| 45° | 51.3% | 150 |
+| 90° | 56.0% | 150 |
 
-At font=10 + rot=90°, medium contrast collapses to **0%** (0/5) while high contrast maintains 80% and low contrast 60%. The medium contrast anomaly (#555 on #DDD) may create a specific gray-on-gray combination that is harder to resolve than the low contrast (#888 on #BBB) at this extreme rotation.
+Rotation has a large effect, though 90° (56%) is slightly easier than 45° (51%) — suggesting the model handles purely vertical text better than diagonal text.
+
+**By contrast:**
+
+| Contrast | Accuracy | n |
+|----------|----------|---|
+| high (#000 / #FFF) | 70.4% | 250 |
+| medium (#555 / #DDD) | 70.0% | 250 |
+| low (#888 / #BBB) | 62.8% | 250 |
+
+Contrast is the weakest axis — ~7pp gap between high and low contrast, far smaller than the font and rotation effects.
+
+**Font × rotation cross-tab (word accuracy %):**
+
+| Font | rot=0° | rot=15° | rot=30° | rot=45° | rot=90° |
+|------|--------|---------|---------|---------|---------|
+| 20px | 100% | 100% | 100% | 100% | 100% |
+| 14px | 100% | 100% | 100% | 87% | 100% |
+| 10px | 100% | 100% | 80% | 63% | 73% |
+| 8px | 100% | 80% | 33% | 7% | 7% |
+| 6px | 57% | 3% | 3% | 0% | 0% |
+
+The interaction is strongly multiplicative: font=8 at rot=0° is 100%, but font=8 at rot=45° collapses to 7%. Font=6 reaches 0% at all rotations except straight-on.
 
 **Word error pattern — lexical hallucination:**
-The model doesn't fail silently — it produces plausible English words that share visual features with the target:
-- "Expenses" → "Experiences" (font=14, rot=45)
-- "Analysis" → "Analyze" (font=10, rot=30/45)
-- "Forecast" → "Forrest" (font=10, rot=90)
-- "Margin" → "bargain" (font=10, rot=90)
-- "Marketing" → "hardcoding" (font=10, rot=90)
-- "Revenue" → "Revisions" / "Reversals" (font=10, rot=90)
+Below font=8, the model doesn't fail silently — it hallucinates plausible English words with no connection to the target:
+- GT="Compliance" → "Suitcase" (font=6, rot=90°)
+- GT="Marketing" → "Explore" (font=6, rot=90°)
+- GT="Quarterly" → "Socks" (font=6, rot=90°)
+- GT="Forecast" → "Forrest" (font=10, rot=90°)
+- GT="Analysis" → "Analyze" (font=10, rot=30°-45°)
+- GT="Revenue" → "Revisions" / "Reversals" (font=10, rot=90°)
 
-These are not random character errors — they're the model's language prior filling in visual ambiguity with the most likely word given partial letter recognition. At 90° rotation with low resolution, the model sees a word-length shape and generates a contextually plausible completion.
+At tiny sizes and high rotations, the model sees a word-shape blob and generates whatever word its prior suggests. Errors are not random character substitutions — they're coherent words that share approximate visual features with the target.
 
-#### Isolated Number Reading
+#### Isolated Number Reading (`text_number_reading`)
 
-**Overall: 81.0%** (81/100)
+Overall: **52.5%** (105/200) — across font=[20,14,10,8,6] × rotation=[0,30,45,90°]
 
-**By font_size × rotation:**
+**By font_size:**
 
-| Font | rot=0 | rot=30 | rot=45 | rot=90 |
-|------|-------|--------|--------|--------|
-| 48 | 100% | 100% | 100% | 100% |
-| 32 | 100% | 100% | 100% | 100% |
-| 20 | 100% | 100% | 60% | 80% |
-| 14 | 100% | 40% | 100% | 100% |
-| **10** | **100%** | **20%** | **20%** | **0%** |
+| Font | Accuracy | n |
+|------|----------|---|
+| 20px | 82.5% | 40 |
+| 14px | **95.0%** | 40 |
+| 10px | 55.0% | 40 |
+| 8px | **20.0%** | 40 |
+| 6px | **10.0%** | 40 |
 
-Numbers degrade much more severely than words at the same font size and rotation. At font=10 + rot=90°, accuracy is **0%** (vs 47% for words). At font=10 + rot=30°, accuracy is 20% (vs 87% for words).
+Number reading is harder than word reading at every font size. Even font=20 only reaches 82.5% (vs 100% for words) because rotation affects numbers more at large sizes.
 
-The font=14 pattern is irregular — rot=30° drops to 40% while rot=45° and rot=90° are 100%. This is driven by a single number ("73") that was misread as "13" in 3/5 instances at rot=30°, suggesting a specific digit confusion (7→1) at this angle.
+**By rotation:**
 
-**Number error patterns — digit-level confusion:**
-Unlike word errors (lexical hallucination), number errors show raw OCR failures:
-- "73" → "13" (font=14, rot=30) — the "7" becomes a "1" at this angle
-- "518" → "5128" (font=20, rot=45) — phantom digit insertion
-- "256" → "325" (font=10, rot=90) — digit transposition and substitution
-- "365" → "55" (font=10, rot=90) — digit dropping
-- "2048" → "2548" (font=10, rot=90) — digit substitution
-- "89" → "88" (font=20, rot=90) — single-digit confusion
-- Several font=10 errors: "I can only see a small icon" — the model doesn't even see text, interpreting the tiny rotated number as a cursor/icon
+| Rotation | Accuracy | n |
+|----------|----------|---|
+| 0° | 84.0% | 50 |
+| 30° | 46.0% | 50 |
+| 45° | 36.0% | 50 |
+| 90° | 44.0% | 50 |
 
-Numbers lack the lexical rescue that words enjoy. With words, even partial letter recognition can be completed by language priors ("Exp..." → "Expenses"). With numbers, each digit must be independently resolved — there's no prior for "what 3-digit number starts with 5 and ends with 8."
+**Font × rotation cross-tab (number accuracy %):**
 
-#### HF Circled Letter
+| Font | rot=0° | rot=30° | rot=45° | rot=90° |
+|------|--------|---------|---------|---------|
+| 20px | 100% | 90% | 60% | 80% |
+| 14px | 100% | 80% | 100% | 100% |
+| 10px | 100% | 60% | 20% | 40% |
+| 8px | 80% | 0% | 0% | 0% |
+| 6px | 40% | 0% | 0% | 0% |
 
-| Source | Accuracy | n |
-|--------|----------|---|
-| Generated | 80.0% | 40 |
-| HF Blind | 82.4% | 624 |
+Font=8 with any rotation is essentially 0%. Font=10 with rotation ≥45° drops to 20-40%.
 
-The circled letter task asks the model to identify which letter in a word has a circle drawn around it. At 82.4%, this represents a different kind of text reading challenge — the text itself is readable, but the model must additionally determine which specific character the circle encloses, requiring spatial precision overlaid on OCR.
+**Number error patterns — digit-level failures:**
+Unlike word errors (lexical hallucination), number errors show raw OCR failure at the digit level:
+- "73" → "13" (7→1 confusion at angle)
+- "518" → "5128" (phantom digit insertion)
+- "256" → "325" (digit transposition and substitution)
+- "365" → "55" (digit dropping)
+- "2048" → "2548" (single digit substitution)
+- "89" → "88" (single-digit confusion)
+- At font=6-8: "I can only see a small icon / symbol" — model stops perceiving text entirely
+
+Numbers lack lexical rescue. With words, partial letter recognition enables language-prior completion ("Exp..." → "Expenses"). With numbers, each digit must be independently resolved with no analogous fallback.
 
 ## Cross-Task Patterns
 
-1. **Text reading is near-solved above 14px.** At font sizes ≥14px, word reading is ≥96% and number reading is ≥90% across all rotations and contrasts. The model's OCR capability is strong for typical document and chart text sizes.
+1. **Font=14px is the practical floor for reliable reading.** At 14px, both words (97.3%) and numbers (95.0%) are near-ceiling regardless of rotation or contrast. Most chart text, axis labels, and document body text is ≥12-14px, placing typical business content in the reliable zone.
 
-2. **Lexical priors rescue words but not numbers.** The 15-point accuracy gap between words (96.3%) and numbers (81.0%) reflects the model's language model coming to the rescue: partial visual information from degraded text can be completed by vocabulary knowledge for words, but numbers must be read digit-by-digit with no such fallback.
+2. **The 8px cliff is steep and unexpected.** Word accuracy drops 38pp (83%→45%) and number accuracy drops 35pp (55%→20%) from 10px to 8px. Small icon labels, footnotes, and footnote annotations commonly fall in the 6-9px range and will be largely unreadable.
 
-3. **Rotation is harder than small font size or low contrast.** At font=10, unrotated text is 100% for both words and numbers. Rotation at the same font size drops accuracy dramatically (words: 47% at 90°, numbers: 0% at 90°). Contrast reduction alone has a smaller effect — font=10 + rot=0° is 100% at all contrasts.
+3. **Rotation degrades multiplicatively with small font.** At font=8, rotation collapses accuracy from 100% (0°) to 7% (45°). At font=14, the same rotation causes negligible degradation. Font and rotation are not independent — they interact severely at small sizes.
 
-4. **Chart labels are easier than isolated text at the same nominal font size.** Chart labels at font=7px are 100%, while isolated words at font=10px with rotation are <90%. Chart rendering via matplotlib produces higher-quality anti-aliased text at effective DPI, and the bar-chart context provides structural cues for label identification.
+4. **Lexical priors rescue words but expose model dependency.** The 15pp accuracy gap between words (67.7%) and numbers (52.5%) reflects the language model rescuing degraded word signals via vocabulary. The hallucination at font=6 ("Suitcase" for "Compliance") is the dark side of this: when the visual signal is too degraded, the prior generates fluent but completely wrong text.
 
-5. **The 90° rotation failure is not symmetric.** At font=10, performance at rot=45° (~87% words, ~20% numbers) is substantially better than rot=90° (~47% words, ~0% numbers). Vertical text appears to be a qualitatively harder visual pattern than diagonal text for the vision encoder.
+5. **90° rotation is not the hardest angle.** Across both tasks, 45° rotation is consistently harder than 90°. Pure vertical text appears to be easier for the vision encoder than diagonal text — possibly because vertical text is encountered in training data (rotated labels, signage) more than diagonal.
 
-6. **Medium contrast can be harder than low contrast.** At font=10 + rot=90°, medium contrast (#555/#DDD) yields 0% word accuracy while low contrast (#888/#BBB) yields 60%. This counterintuitive result suggests the specific gray values of medium contrast fall in a perceptual dead zone for the model.
+6. **Contrast has minimal effect compared to font size.** The 7-8pp gap between high and low contrast is dwarfed by font size effects (87pp gap between 20px and 6px). Contrast optimization is low-priority for training.
 
 ## Finetuning Implications
 
-- **Small rotated numbers are the highest-value target.** Font=10 numbers at 30-90° rotation (20-0% accuracy) represent a clear, systematic failure that training could address. The failure is at the character recognition level, not reasoning.
-- **Training should include vertical text (90° rotation).** This is a qualitatively distinct failure mode from diagonal text. The model may need specific exposure to vertically oriented characters.
-- **Curriculum design:** Start with large rotated text (font=32, where everything is 100%), progressively decrease size. Numbers should be trained separately from words since they can't benefit from language model priors.
-- **Don't train on chart labels.** They're already 100% — the chart rendering pipeline produces high-quality text that doesn't exercise the model's OCR limits.
-- **Circled letter training for spatial precision.** The 82% accuracy on circled letters represents a spatial overlay challenge distinct from pure OCR — training should include character-level localization within words.
+- **The 8-10px regime is the highest-value target.** Font=8 (words: 45%, numbers: 20%) is the practical failure boundary for real-world text. Training with synthetic small-text data (font=8-10, all rotations) would cover the most relevant failure mode.
+- **Numbers need dedicated training.** They cannot benefit from lexical priors — each digit must be learned independently. Training curriculum: start with single digits at small sizes, build to multi-digit numbers with rotation.
+- **Include vertical text explicitly.** 90° rotation is a qualitatively distinct pattern. Dedicated exposure to vertically oriented text (axis labels rotated 90°, vertical signage) would help.
+- **Lexical hallucination at tiny sizes is a safety concern.** At font=6 the model confidently outputs plausible but wrong words. Applications relying on OCR of small text need explicit uncertainty calibration, not just accuracy improvement.
+- **Font ≥14px needs no improvement** — already ≥95% across all conditions.

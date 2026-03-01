@@ -8,6 +8,8 @@ from __future__ import annotations
 import os
 import random
 
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
@@ -19,7 +21,6 @@ def _draw_nested_squares(ax, depth: int, line_thickness: float, canvas_frac: flo
     # Outer square centered at (0.5, 0.5) with side = canvas_frac
     size = canvas_frac
     reduction = 0.75
-    padding_frac = 0.05  # min gap between squares as fraction of parent
 
     cx, cy = 0.5, 0.5
     for d in range(depth):

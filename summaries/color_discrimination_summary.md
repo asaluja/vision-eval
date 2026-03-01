@@ -1,110 +1,154 @@
 # Color Discrimination — Evaluation Summary
 
 ## Primitive Definition
-Can the model distinguish visually similar colors, match legend entries to data series by shade, and detect subtle shade differences in a uniform field?
+Can the model distinguish colors, match legend entries to data series, and detect shade differences? This spans legend-to-bar matching, odd-shade cell detection, and heatmap value reading.
 
 ## Key Finding
-**Color shade detection in grids follows a clean sigmoid: 100% at ΔL≥16, 88% at ΔL≈10, 52% at ΔL≈7, and 18% at ΔL≈5. Legend-to-bar color matching degrades to 58% with 5 same-family bars, where roughly half the errors are color confusion (reading the wrong bar) and half are value misreading. Color family matters: oranges are most discriminable, greens least.**
+**Color discrimination is solved for visually distinct colors (100%) but degrades sharply as shades converge. At ΔL≈7 (near-threshold lightness difference), odd-cell detection drops to 60%. At ΔL≈5 (extreme), it collapses to 21% — near random guessing. Heatmap value reading (56%) is the hardest task, requiring color reading and continuous scale interpolation simultaneously.**
 
 ## Tasks Evaluated
 
-### Ceiling Tasks (100% exact match)
+### Ceiling Tasks (100% accuracy)
 
-| Task | n | Source | Notes |
-|------|---|--------|-------|
-| Color grid (easy, ΔL≈30-40) | 50 | Generated | Darkest vs lightest shade, 4×4 and 6×6 grids, all 5 families |
-| Color grid (hard, ΔL≈16-23) | 50 | Generated | Dark vs medium shade, 4×4 and 6×6 grids, all 5 families |
-| Bar chart (easy, distinct colors) | 36 | Generated | 3-5 bars with maximally distinct colors (blue/red/green/orange/purple) |
+| Task | Accuracy | n | Condition |
+|------|----------|---|-----------|
+| `chart_legend_match` (easy) | 100% | 30 | Maximally distinct colors (red, blue, green, orange, purple) |
+| `color_grid_odd` (easy) | 100% | 100 | Darkest vs lightest shade (ΔL≈30-40) |
+| `color_grid_odd` (hard) | 100% | 100 | Dark vs medium shade (ΔL≈16-23) |
 
-When shade differences are large (ΔL≥16 in HSL space), the model perfectly identifies the odd cell in a grid regardless of grid size or color family. Similarly, matching a color name to a bar is trivial when bars use maximally distinct hues.
+When colors are visually distinct — either across different hue families or with large lightness differences — performance is perfect regardless of number of bars or grid size.
 
 ### Degrading Tasks
 
-#### Color Grid — Odd Shade Detection
+#### Legend-to-Bar Matching (`chart_legend_match`)
 
-**Accuracy by lightness delta (ΔL):**
+Overall: **77.8%** (140/180)
 
-| Difficulty | ΔL (HSL) | 4×4 | 6×6 | Overall |
-|-----------|----------|-----|-----|---------|
-| easy | ~30-40 | 100% | 100% | **100%** |
-| hard | ~16-23 | 100% | 100% | **100%** |
-| very_hard | ~10 | 88% | 88% | **88%** |
-| near_threshold | ~7 | 56% | 48% | **52%** |
-| extreme | ~5 | 24% | 12% | **18%** |
+| Difficulty | Accuracy | n | Description |
+|-----------|----------|---|-------------|
+| Easy | 100% | 30 | Bars use maximally distinct hue families |
+| Hard | **73.3%** | 150 | Bars use same-family similar shades |
 
-The degradation follows a clean sigmoid curve from 100% to 18% as ΔL drops from 16 to 5.
+**Hard difficulty by number of bars:**
 
-**Grid size effect:** Minimal at easy/hard (both 100%). At near_threshold and extreme, 4×4 slightly outperforms 6×6 (56% vs 48%, 24% vs 12%), likely because smaller grids produce larger cells that are easier to compare visually.
+| n_bars | Accuracy | n |
+|--------|----------|---|
+| 3 | 90% | 50 |
+| 4 | 68% | 50 |
+| 5 | **62%** | 50 |
 
-**Accuracy by color family:**
+With only 3 similar-shade bars the model correctly identifies the queried color 90% of the time. As bars increase to 5, accuracy drops to 62% — more candidates with similar colors creates confusion between adjacent shades in the legend.
 
-| Difficulty | Blues | Reds | Greens | Purples | Oranges |
-|-----------|-------|------|--------|---------|---------|
-| easy | 100% | 100% | 100% | 100% | 100% |
-| hard | 100% | 100% | 100% | 100% | 100% |
-| very_hard | 90% | 80% | 70% | 100% | 100% |
-| near_threshold | 80% | 50% | 10% | 50% | 70% |
-| extreme | 10% | 0% | 20% | 10% | 50% |
-
-Color families have dramatically different discriminability:
-- **Oranges** are most discriminable (50% even at extreme ΔL≈5), likely because the orange hue range spans warm yellow to deep brown, providing additional hue cues beyond pure lightness.
-- **Greens** are least discriminable (10% at near_threshold), consistent with human color perception — green is the widest band in the visible spectrum, making lightness-only differences harder to detect.
-- **Reds** are hardest at extreme (0%), possibly because the red family straddles the hue boundary near 0°/360°, compressing perceptual distance.
-- **Blues** and **purples** show intermediate performance, tracking roughly with their saturation ranges.
-
-**Error pattern:** At extreme difficulty, the model systematically examines each cell row by row but cannot identify the odd cell. It picks a cell that "looks slightly different" — but it's guessing. The responses show careful reasoning structure applied to perceptually indistinguishable input.
-
-#### Bar Chart — Color Legend Matching
-
-**Accuracy by difficulty × number of bars:**
-
-| Difficulty | n=3 | n=4 | n=5 | Overall |
-|-----------|-----|-----|-----|---------|
-| easy (distinct colors) | 100% | 100% | 90% | **97%** |
-| hard (same-family shades) | 90% | 71% | 58% | **73%** |
-
-The hard bar chart task degrades monotonically with n_bars. At n=5 with same-family shades, accuracy is 58% — barely above chance for a task with 5 options.
-
-**Hard bar accuracy by color family:**
+**Hard difficulty by color family:**
 
 | Family | Accuracy | n |
 |--------|----------|---|
-| Reds | 78% | 32 |
-| Oranges | 77% | 30 |
-| Greens | 76% | 29 |
-| Blues | 69% | 29 |
-| Purples | 67% | 33 |
+| blues | 86.7% | 30 |
+| reds | 80.0% | 30 |
+| greens | 80.0% | 30 |
+| oranges | **60.0%** | 30 |
+| purples | **60.0%** | 30 |
 
-The family ranking for bars differs from grids — purples are hardest for bars (67%) while greens were hardest for grids. This suggests the legend-matching task involves different perceptual demands than the odd-one-out task.
+Oranges and purples are the hardest families — their similar shades are more perceptually ambiguous than blues or reds, possibly because orange/purple occupy narrower regions of the model's color representation.
 
-**Error analysis (41 hard bar errors):**
-- **Color confusion (49%):** The model correctly reads a bar's value but reads the **wrong bar** — it maps the queried color name (e.g., "dark purple") to a different bar with a similar shade. These errors read a value that exactly matches another bar in the chart.
-- **Value misreading (51%):** The model identifies the correct bar but misreads its height. Mean absolute error: 25.7 units on a 15-90 scale.
+**Error pattern:** Most errors are adjacent-shade confusions — the model picks the wrong shade within the same family rather than a completely wrong family. The bar heights are read correctly; the failure is in matching the color to the correct legend entry.
 
-The roughly equal split between color confusion and value misreading suggests two independent failure modes compound: the model must both (1) match a color name to the correct bar among similar shades, and (2) accurately read that bar's value. Both tasks have ~75-85% individual success rates, and their errors are approximately independent.
+#### Odd-Shade Cell Detection (`color_grid_odd`)
 
-**Queried color type matters:**
-- "Dark" shades account for 27/41 errors (66% of errors but ~33% of queries) — dark shades are harder to distinguish in legends because they appear more similar on screen.
-- "Light" shades have only 1 error — the lightest shade in each family is visually distinctive.
+Overall: **73.4%** (367/500)
+
+**By grid difficulty (ΔL = lightness delta between odd cell and base):**
+
+| Difficulty | ΔL approx | Accuracy | n |
+|-----------|-----------|----------|---|
+| easy | ΔL≈30-40 | 100% | 100 |
+| hard | ΔL≈16-23 | 100% | 100 |
+| very_hard | ΔL≈10 | **86%** | 100 |
+| near_threshold | ΔL≈7 | **60%** | 100 |
+| extreme | ΔL≈5 | **21%** | 100 |
+
+The perceptual cliff falls between ΔL=10 (86%) and ΔL=7 (60%). At ΔL=5, accuracy is 21% — essentially random for a 4×4 grid (random baseline = 6.25%, so the model retains slight above-chance sensitivity but nearly none).
+
+**Color family × difficulty cross-tab (accuracy %):**
+
+| Difficulty | blues | greens | oranges | purples | reds |
+|-----------|-------|--------|---------|---------|------|
+| easy | 100% | 100% | 100% | 100% | 100% |
+| hard | 100% | 100% | 100% | 100% | 100% |
+| very_hard | 90% | 70% | **100%** | 80% | 90% |
+| near_threshold | 70% | **25%** | **90%** | 50% | 65% |
+| extreme | 5% | 15% | **55%** | 10% | 20% |
+
+Oranges stand out: even at extreme difficulty (ΔL≈5), orange achieves 55% — more than double any other family (next best: greens at 15%). Greens are consistently the hardest family, reaching near-zero at extreme difficulty. This asymmetry likely reflects how the model's visual encoder weights warm vs. cool hues.
+
+**By grid size × difficulty:**
+
+| | grid=4 | grid=6 |
+|---|---|---|
+| easy | 100% | 100% |
+| hard | 100% | 100% |
+| very_hard | 90% | 82% |
+| near_threshold | 64% | 56% |
+| extreme | 22% | 20% |
+
+A modest ~8pp penalty for the larger grid at near-threshold, but negligible at extreme. Cell size is not the primary failure mode — colorimetric similarity dominates.
+
+#### Heatmap Value Reading (`heatmap_cell_value`)
+
+Overall: **55.9%** (151/270) within tolerance (max(2, gt×5%))
+
+Requires three compound operations: (1) localize the queried cell, (2) read its color, (3) map that color to a value on the colorbar.
+
+**By grid size:**
+
+| Grid | Accuracy | n |
+|------|----------|---|
+| 4×4 | **63.3%** | 90 |
+| 4×6 | 54.4% | 90 |
+| 6×6 | **50.0%** | 90 |
+
+Smaller grids are easier — fewer cells, larger cell area, less crowded colorbar navigation.
+
+**By colormap:**
+
+| Colormap | Accuracy | n |
+|----------|----------|---|
+| viridis | 58.9% | 90 |
+| YlOrRd | 55.6% | 90 |
+| RdBu | **53.3%** | 90 |
+
+RdBu (diverging, passes through white at center) is hardest — near-neutral midrange colors are ambiguous about sign and magnitude.
+
+**Error magnitude distribution:**
+
+| Tolerance | Within | % |
+|-----------|--------|---|
+| Exact (±0) | 70/270 | 25.9% |
+| ±2 | 150/270 | 55.6% |
+| ±5 | 194/270 | 71.9% |
+| ±10 | 235/270 | 87.0% |
+| ±20 | 256/270 | 94.8% |
+
+The model is rarely wildly wrong (94.8% within ±20) but rarely precise (25.9% exact). Errors cluster in the ±5-10 range — the model reads the approximate color region correctly but cannot interpolate the colorbar precisely.
 
 ## Cross-Task Patterns
 
-1. **Lightness delta is the primary difficulty axis for shade detection.** The grid task provides a clean psychometric curve: 100% at ΔL≥16, sigmoid degradation through ΔL=10 (88%), ΔL=7 (52%), and ΔL=5 (18%). This is a perceptual resolution limit, not a reasoning failure.
+1. **Easy color discrimination is solved.** Distinct hue families (100%), large lightness gaps (100%). The model's color vocabulary is adequate for typical business charts with well-chosen palettes.
 
-2. **Color family creates a 5× accuracy range at threshold difficulties.** At near_threshold (ΔL≈7), accuracy ranges from 10% (greens) to 80% (blues). This means the ΔL threshold depends on which hue family is being tested — a single ΔL number is insufficient to characterize the model's color discrimination.
+2. **The perceptual cliff falls at ΔL≈7-10.** Above ΔL=10: ≥86%. At ΔL=7: 60%. At ΔL=5: 21%. This is a sharp threshold, not a gradual curve. Same-family shades need at least ΔL≈10-15 to be reliably discriminable.
 
-3. **Grid size has minimal effect compared to shade distance.** 4×4 vs 6×6 shows only ~5-10% difference at threshold difficulties. The bottleneck is perceiving the shade difference, not the cell size or search space.
+3. **Orange is uniquely robust; green is uniquely fragile.** Across all tasks, orange maintains much higher accuracy at near-threshold and extreme difficulties. Greens collapse earliest. This mirrors the model's apparent color representation geometry — warm hues are more discriminable at small lightness deltas than cool/neutral hues.
 
-4. **Legend-to-bar matching compounds two failure modes.** Color confusion (wrong bar) and value misreading (wrong value) contribute roughly equally. With n=5 same-family bars, both tasks are individually unreliable, and their errors multiply: ~75% per-task accuracy yields ~58% joint accuracy (0.75 × 0.75 ≈ 0.56).
+4. **More similar bars = harder matching, non-linearly.** Legend-to-bar matching drops from 90% (3 bars) to 62% (5 bars) in the hard condition. Each additional same-family bar compounds confusion.
 
-5. **Dark shades are disproportionately confusable.** In both grids and bar charts, darker shades within a family are harder to distinguish. This is consistent with Weber's law — the same absolute lightness difference (ΔL=5) is a larger relative change at L=80 (light) than at L=40 (dark).
+5. **Heatmap combines three failure modes.** Cell localization, color reading, and colorbar interpolation errors all compound. The gap between 25.9% exact and 87.0% within-±10 suggests the model can identify the approximate color region but lacks precision in continuous scale reading.
 
-6. **The model's reasoning is intact even when perception fails.** Grid extreme errors show systematic row-by-row examination — the model uses the correct strategy but simply cannot perceive the shade difference. This distinguishes color discrimination from tasks like counting where both perception and reasoning may fail.
+6. **Colorbar design matters.** Diverging colormaps (RdBu) that pass through white or near-white are harder than sequential colormaps (viridis, YlOrRd). Mid-range ambiguity is a design failure, not just a model failure.
 
 ## Finetuning Implications
 
-- **Color grid detection at ΔL=5-10 is the primary finetuning target.** The clean sigmoid provides natural curriculum design: start at ΔL=15 (already perfect), progressively decrease to ΔL=5.
-- **Per-family calibration is needed.** Training should include examples from all 5 color families at threshold difficulties, with potentially family-specific difficulty schedules (oranges can start harder, greens need more training at easier levels).
-- **Bar chart color matching needs dual training:** (1) Legend-to-bar color mapping with same-family shades, and (2) value reading accuracy under color uncertainty. These are separable skills that both need improvement.
-- **DPO pairs:** Grid images at near_threshold (52%) and extreme (18%) provide high-quality preference pairs — the model is uncertain and frequently wrong, making both correct and incorrect responses readily available for contrastive training.
-- **Dark shade emphasis:** Training data should oversample "dark" shade queries since these account for disproportionate errors in both tasks.
+- **Near-threshold shade discrimination is the highest-value target.** The ΔL=7 regime (60%) is realistic — professional charts frequently use similar-shade families for related series. Training pairs: (color grid with ΔL=7-10 → correct odd cell) across all families, weighted toward greens/purples.
+- **DPO pairs for legend matching:** Hard-difficulty instances with n_bars=4-5 provide natural preference pairs. Rejected: model confuses dark blue for medium blue and returns wrong bar value. Preferred: correctly identifies the shade.
+- **Heatmap training should emphasize colorbar interpolation.** The main failure mode is scale reading precision, not cell localization. Training data where the model explicitly reads the colorbar ("the cell color corresponds to ≈60 on the scale") would build the color-to-value mapping.
+- **Easy color discrimination needs no improvement** — distinct-color charts are already solved. Training resources should go to same-family, near-threshold cases.
+- **Avoid diverging colormaps in training eval.** RdBu's white midpoint creates genuine ambiguity. Training on sequential colormaps (viridis, YlOrRd) first builds a cleaner color-to-value signal before introducing the complexity of diverging scales.

@@ -11,11 +11,12 @@ This isolates the text reading primitive that all chart/table/document tasks dep
 
 from __future__ import annotations
 
-import math
 import os
 import random
 
 from PIL import Image, ImageDraw, ImageFont
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from generate.base import ensure_dir, make_instances, _get_font
@@ -103,7 +104,7 @@ def generate(
 ) -> list[TaskInstance]:
     """Generate text reading tasks at varying difficulty levels."""
     if font_sizes is None:
-        font_sizes = [48, 32, 20, 14, 10]  # large to tiny
+        font_sizes = [20, 14, 10, 8, 6]  # skip trivially easy large sizes; focus on hard range
     if rotations is None:
         rotations = [0, 15, 30, 45, 90]
     if contrasts is None:

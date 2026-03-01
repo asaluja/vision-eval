@@ -85,8 +85,11 @@ def run_evaluation(
 
     if not pending:
         print(f"  All {len(instances)} instances already evaluated, skipping.")
+        requested = {inst.image_path + "|" + inst.prompt for inst in instances}
         with open(results_path) as f:
-            return [json.loads(line) for line in f if line.strip()]
+            return [r for line in f if line.strip()
+                    for r in [json.loads(line)]
+                    if (r["image_path"] + "|" + r["prompt"]) in requested]
 
     print(f"  {len(pending)} pending ({len(instances) - len(pending)} already done)")
 

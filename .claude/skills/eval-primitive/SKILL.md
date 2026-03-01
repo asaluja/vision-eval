@@ -140,20 +140,21 @@ Filter analysis to: `path_following`, `line_intersection`, `chart_line_trend`, `
 | task_type | Source | Rec. n | Primary Axes |
 |---|---|---|---|
 | `relative_bar_compare` | Local | 2 | value_diff: [1,2,5,10,20,40], n_bars: [4,6,8,10,12], show_grid: [T/F] |
-| `relative_line_compare` | Local | 3 | n_points: [5,8], value_gap (emergent) |
+| `relative_line_compare` | Local | 3 | n_points: [5,8], line_gaps: [1,2,5,10,20], y_maxes: [None,100,200] |
 | `chart_bar_compare` | Local (chart) | 2 | n_categories: [3,5,7,10] |
 | `table_max` | Local (table) | 2 | n_rows: [3,5,7,10], n_cols: [2,3,5] |
 | `pie_slice_compare` | Local (pie_charts) | 2 | n_slices: [3,4,5,6,7,8] |
+| `chart_data_match` | Local (chart_comparison) | 2 | n_categories: [3,4,5,6], chart_pair: [bar_v/bar_h, bar_v/line, bar_v/pie], match: [T/F] |
 | `touching_circles` | Local | 3 | distance: [-0.4→0.6], radius: [30,50] |
 | `touching_circles` | HF (blind) | — | — |
 
 **Commands**:
 ```bash
-python run_phase1.py --generate-only --n 3 --tasks relative_comparison chart table touching_circles pie_charts
-python run_phase1.py --eval-only --tasks relative_comparison chart table touching_circles pie_charts --workers 10
+python run_phase1.py --generate-only --n 5 --tasks relative_comparison chart table touching_circles pie_charts chart_comparison
+python run_phase1.py --eval-only --tasks relative_comparison chart table touching_circles pie_charts chart_comparison --workers 10
 python run_benchmarks.py --dataset blind --tasks touching_circles --workers 10
 ```
-Filter analysis to: `relative_bar_compare`, `relative_line_compare`, `chart_bar_compare`, `table_max`, `pie_slice_compare`, `touching_circles`.
+Filter analysis to: `relative_bar_compare`, `relative_line_compare`, `chart_bar_compare`, `table_max`, `pie_slice_compare`, `chart_data_match`, `touching_circles`.
 
 ---
 
@@ -223,14 +224,14 @@ Always report **bias alignment rate** alongside accuracy for this primitive.
 | `conflict_title_trend` | Local | 3 | n_points: [5,8,12], conflict_type: [increasing↔decreasing] |
 | `conflict_legend_color` | Local | 3 | n_series: [2,3,4] |
 | `conflict_annotation` | Local | 3 | n_bars: [4,6,8], gap_to_second: [small,large] |
-| `chart_data_match` | Local | 2 | n_categories: [3,4,5,6], chart_pair: [bar/pie,bar_v/bar_h,bar/line], match: [T/F] |
 
 **Commands**:
 ```bash
-python run_phase1.py --generate-only --n 3 --tasks text_visual_conflict chart_comparison
-python run_phase1.py --eval-only --tasks text_visual_conflict chart_comparison --workers 10
+python run_phase1.py --generate-only --n 3 --tasks text_visual_conflict
+python run_phase1.py --eval-only --tasks text_visual_conflict --workers 10
 ```
 For each error, also check `text_reliant` flag in metadata — this is the key signal for grounding failures.
+Note: `chart_data_match` moved to `relative_comparison` primitive.
 
 ---
 

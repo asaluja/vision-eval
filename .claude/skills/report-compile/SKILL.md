@@ -3,7 +3,7 @@ name: report-compile
 description: Compile all 8 primitive summaries into a single HTML report for Google Docs
 ---
 
-Compile all primitive summaries into a single condensed HTML report at `results/report.html`.
+Compile all primitive summaries into a single condensed HTML report at `report.html` (project root).
 
 ## Process
 
@@ -38,7 +38,7 @@ For each of the 8 primitives, write bullets following these rules:
 - **Budget**: ~150 words per section max.
 - Focus on blind spots and surprises, not expected behavior.
 
-### 4. Compose `results/report.html`
+### 4. Compose `report.html`
 
 Use this HTML template structure:
 
@@ -105,12 +105,12 @@ Use this HTML template structure:
 
 <h1>Per-Primitive Findings</h1>
 
-<img src="../figures/accuracy_summary.png" alt="Accuracy summary across all tasks">
+<img src="figures/accuracy_summary.png" alt="Accuracy summary across all tasks">
 <div class="caption">Figure 1. Accuracy across all evaluated tasks, grouped by perceptual primitive. Dashed lines at 50% and 90%.</div>
 
 <!-- 8 sections: one <h2> + <ul> per primitive -->
 <!-- Embed per-primitive error figures where they exist: -->
-<!-- <img src="../figures/<primitive>_errors.png"> -->
+<!-- <img src="figures/<primitive>_errors.png"> -->
 
 </body>
 </html>
@@ -128,16 +128,26 @@ Section order:
 
 For each section, after the bullet list, check if `figures/<primitive>_errors.png` exists and embed it if so (e.g., `figures/counting_errors.png`, `figures/spatial_errors.png`).
 
+### 4.5. Review and update figures
+
+Before embedding, review all `.png` files in `figures/` that are candidates for inclusion:
+
+- **Read each figure** to visually inspect what it shows.
+- **Check if it's still accurate** — does it reflect the latest data in the summaries? If a summary was updated (e.g., pie charts added to counting) but the figure wasn't regenerated, the figure is stale.
+- **Check if it's relevant** — does it add information beyond what the bullets already say? Error composite images showing specific failure cases are high-value. Generic accuracy bar charts that just repeat the numbers in the text are low-value.
+- **Regenerate stale figures** by finding and running the corresponding `figures/make_*.py` script with updated data.
+- **Drop irrelevant figures** — don't embed a figure just because it exists. Every figure should earn its space by showing something the text can't easily convey (e.g., visual error patterns, accuracy heatmaps by parameter, example failure cases).
+
 ### 5. Embed images as base64
 
-After writing the HTML with `<img src="../figures/...">` tags, run `figures/embed_images.py` to produce a self-contained version with base64 data URIs:
+After writing the HTML with `<img src="figures/...">` tags, run `figures/embed_images.py` to produce a self-contained version with base64 data URIs:
 
 ```bash
-.venv/bin/python figures/embed_images.py results/report.html
+.venv/bin/python figures/embed_images.py report.html
 ```
 
-This rewrites `results/report.html` in-place, replacing each `src="../figures/foo.png"` with an inline `src="data:image/png;base64,..."`. The result is a single self-contained HTML file whose images survive copy-paste into Google Docs.
+This rewrites `report.html` in-place, replacing each `src="figures/foo.png"` with an inline `src="data:image/png;base64,..."`. The result is a single self-contained HTML file whose images survive copy-paste into Google Docs.
 
 ### 6. Output
 
-Print the output path (`results/report.html`). The user will open in a browser, Cmd+A, Cmd+C, paste into Google Docs.
+Print the output path (`report.html`). The user will open in a browser, Cmd+A, Cmd+C, paste into Google Docs. Note: `report.html` lives at the project root, NOT in `results/` (which is reserved for JSONL data only).

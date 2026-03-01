@@ -13,27 +13,21 @@ from __future__ import annotations
 import os
 import random
 
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
 from generate.base import TaskInstance, ensure_dir, make_instances
-from generate.chart_common import COLORS
+from generate.chart_common import COLORS, MONTH_LABELS, SERIES_POOLS
 
 # Category label pools
-MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 PRODUCT_LABELS = ["Product A", "Product B", "Product C", "Product D",
                   "Product E", "Product F", "Product G", "Product H"]
 TEAM_LABELS = ["Team 1", "Team 2", "Team 3", "Team 4",
                "Team 5", "Team 6", "Team 7", "Team 8"]
 
-SERIES_NAMES = [
-    ["Revenue", "Cost", "Profit", "Tax", "Margin", "COGS", "Net", "Debt", "Equity", "Dividends"],
-    ["2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023", "2024", "2025"],
-    ["Online", "In-Store", "Wholesale", "Direct", "Partner", "Reseller", "OEM", "Retail", "B2B", "Export"],
-]
-
-COLORS = list(matplotlib.cm.tab10.colors[:10])
+SERIES_NAMES = SERIES_POOLS
 
 
 def _make_bar_chart(categories, values, show_grid, show_values, title, output_path):

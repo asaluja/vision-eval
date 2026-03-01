@@ -10,6 +10,8 @@ When text annotations in a chart contradict the visual content, does the model g
 
 All tasks are synthetically generated. Each plants a specific text-visual contradiction in a chart and asks a question whose correct answer requires reading the visual, not the text. The `text_reliant` metric tracks whether the model's answer matched the wrong text.
 
+Note: `chart_data_match` (cross-representation data equivalence) was initially categorized here but moved to Relative Comparison — it has no text-visual conflict, only cross-visual comparison.
+
 ### Overall Results
 
 | Conflict Type | Accuracy | Text-Reliant Rate | n |

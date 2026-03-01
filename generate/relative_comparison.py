@@ -12,15 +12,15 @@ from __future__ import annotations
 import os
 import random
 
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
 from generate.base import ensure_dir, make_instances
-from generate.chart_common import COLORS
+from generate.chart_common import COLORS, MONTH_LABELS
 
 CATEGORY_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
-MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 SERIES_NAMES = ["Revenue", "Cost", "Profit"]
 
 
@@ -43,7 +43,7 @@ def _make_comparison_bars(categories, values, highlight_pair, show_grid, output_
     plt.close(fig)
 
 
-def _make_two_line_chart(x_labels, series1_vals, series2_vals, s1_name, s2_name, output_path):
+def _make_two_line_chart(x_labels, series1_vals, series2_vals, s1_name, s2_name, output_path, y_max=None):
     """Draw a 2-line chart for relative position comparison."""
     fig, ax = plt.subplots(figsize=(8, 5))
     x = range(len(x_labels))
@@ -53,6 +53,8 @@ def _make_two_line_chart(x_labels, series1_vals, series2_vals, s1_name, s2_name,
     ax.set_xticklabels(x_labels)
     ax.legend()
     ax.set_ylabel("Value")
+    if y_max is not None:
+        ax.set_ylim(0, y_max)
     ax.yaxis.grid(True, alpha=0.3, linestyle="--")
     ax.set_axisbelow(True)
     fig.savefig(output_path, dpi=100, bbox_inches="tight", pad_inches=0.15)
@@ -67,6 +69,8 @@ def generate(
     value_diffs: list[int] | None = None,
     # Line comparison params
     n_points_list: list[int] | None = None,
+    line_gaps: list[int] | None = None,
+    y_maxes: list[int | None] | None = None,
 ) -> list[TaskInstance]:
     """Generate relative comparison tasks.
 
@@ -80,6 +84,10 @@ def generate(
         value_diffs = [1, 2, 5, 10, 20, 40]
     if n_points_list is None:
         n_points_list = [5, 8]
+    if line_gaps is None:
+        line_gaps = [1, 2, 5, 10, 20]
+    if y_maxes is None:
+        y_maxes = [None, 100, 200]  # None=auto (easy), 100=moderate, 200=compressed (hard)
 
     out = ensure_dir(os.path.join(output_dir, "relative_comparison"))
     instances = []
@@ -128,52 +136,67 @@ def generate(
                     ))
 
     # --- Part B: Line comparison (which series is higher at point X?) ---
+    # Sweeps gap and y_max explicitly, like bar comparison sweeps value_diff.
+    # y_max=None uses matplotlib auto-scale (easy — gap fills the viewport).
+    # y_max=100 or 200 forces a fixed range (hard — gap is visually compressed).
     for n_pts in n_points_list:
-        for i in range(n_per_config * 2):  # more instances since less config variation
-            x_labels = MONTH_LABELS[:n_pts]
-            s1_name, s2_name = SERIES_NAMES[0], SERIES_NAMES[1]
+        for gap_target in line_gaps:
+            for y_max in y_maxes:
+                for i in range(n_per_config):
+                    x_labels = MONTH_LABELS[:n_pts]
+                    s1_name, s2_name = SERIES_NAMES[0], SERIES_NAMES[1]
 
-            # Generate two lines that cross each other (so the answer varies by point)
-            s1_base = random.randint(20, 50)
-            s2_base = random.randint(20, 50)
-            s1_slope = random.uniform(-3, 3)
-            s2_slope = random.uniform(-3, 3)
-            s1_vals = [max(5, min(95, int(s1_base + s1_slope * j + random.randint(-5, 5))))
-                       for j in range(n_pts)]
-            s2_vals = [max(5, min(95, int(s2_base + s2_slope * j + random.randint(-5, 5))))
-                       for j in range(n_pts)]
+                    # Choose query point index up front
+                    x_idx = random.randint(0, n_pts - 1)
 
-            fname = f"comp_line_{n_pts}_{i}.png"
-            fpath = os.path.join(out, fname)
-            _make_two_line_chart(x_labels, s1_vals, s2_vals, s1_name, s2_name, fpath)
+                    # Build lines so the two series differ by exactly gap_target at x_idx.
+                    # Base values stay in [20, 80] to leave headroom for the gap.
+                    base = random.randint(20, 80 - gap_target)
+                    if random.random() < 0.5:
+                        s1_query = base + gap_target
+                        s2_query = base
+                        higher = s1_name
+                    else:
+                        s1_query = base
+                        s2_query = base + gap_target
+                        higher = s2_name
 
-            # Pick a random x point and ask which is higher
-            x_idx = random.randint(0, n_pts - 1)
-            if s1_vals[x_idx] >= s2_vals[x_idx]:
-                higher = s1_name
-            else:
-                higher = s2_name
-            gap = abs(s1_vals[x_idx] - s2_vals[x_idx])
+                    # Build full series: random walk anchored at the query values
+                    def _build_series(query_val, n, anchor_idx):
+                        vals = [0] * n
+                        vals[anchor_idx] = query_val
+                        for j in range(anchor_idx - 1, -1, -1):
+                            vals[j] = max(5, min(95, vals[j + 1] + random.randint(-8, 8)))
+                        for j in range(anchor_idx + 1, n):
+                            vals[j] = max(5, min(95, vals[j - 1] + random.randint(-8, 8)))
+                        return vals
 
-            instances.extend(make_instances(
-                fpath, "relative_line_compare", higher,
-                subtask=f"line_gap={gap}",
-                metadata={
-                    "chart_type": "comparison_line",
-                    "n_points": n_pts, "query_x": x_labels[x_idx],
-                    "s1_val": s1_vals[x_idx], "s2_val": s2_vals[x_idx],
-                    "value_gap": gap, "higher": higher,
-                },
-                series1=s1_name, series2=s2_name, x_point=x_labels[x_idx],
-            ))
+                    s1_vals = _build_series(s1_query, n_pts, x_idx)
+                    s2_vals = _build_series(s2_query, n_pts, x_idx)
+
+                    y_tag = f"y{y_max}" if y_max is not None else "yauto"
+                    fname = f"comp_line_{n_pts}_g{gap_target}_{y_tag}_{i}.png"
+                    fpath = os.path.join(out, fname)
+                    _make_two_line_chart(x_labels, s1_vals, s2_vals, s1_name, s2_name, fpath, y_max=y_max)
+
+                    instances.extend(make_instances(
+                        fpath, "relative_line_compare", higher,
+                        subtask=f"gap={gap_target}_y={y_tag}",
+                        metadata={
+                            "chart_type": "comparison_line",
+                            "n_points": n_pts, "query_x": x_labels[x_idx],
+                            "s1_val": s1_vals[x_idx], "s2_val": s2_vals[x_idx],
+                            "value_gap": gap_target, "y_max": y_max, "higher": higher,
+                        },
+                        series1=s1_name, series2=s2_name, x_point=x_labels[x_idx],
+                    ))
 
     return instances
 
 
 if __name__ == "__main__":
     insts = generate(n_per_config=1, n_bars_list=[5], value_diffs=[2, 10, 40],
-                     n_points_list=[6])
+                     n_points_list=[5], line_gaps=[1, 5, 20], y_maxes=[None, 100, 200])
     print(f"Generated {len(insts)} instances")
     for inst in insts:
-        print(f"  {inst.subtask:20s} -> {inst.ground_truth} "
-              f"(diff={inst.metadata.get('value_diff', inst.metadata.get('value_gap', '?'))})")
+        print(f"  {inst.subtask:30s} -> {inst.ground_truth}")

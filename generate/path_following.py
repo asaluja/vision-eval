@@ -9,13 +9,13 @@ Two modes:
 
 from __future__ import annotations
 
-import itertools
 import os
 import random
 
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-import numpy as np
 
 from generate.base import TaskInstance, ensure_dir, make_instances
 
@@ -26,9 +26,6 @@ STATIONS = {
     "C": (9, 17),   # top
     "D": (9, 1),    # bottom
 }
-
-# All directed pairs between stations
-ALL_PAIRS = [(a, b) for a, b in itertools.permutations(STATIONS.keys(), 2)]
 
 PATH_COLORS = [
     "#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00",

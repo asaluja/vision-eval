@@ -14,8 +14,9 @@ import os
 import random
 from dataclasses import dataclass, field
 
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 from matplotlib.patches import FancyBboxPatch
 
 from generate.base import TaskInstance, ensure_dir, make_instances
