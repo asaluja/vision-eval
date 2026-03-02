@@ -36,7 +36,7 @@ def query_model(
     prompt: str,
     system: str | None = None,
     thinking: bool = False,
-    thinking_budget: int = 4096,
+    thinking_budget: int = 2048,
     max_retries: int = 3,
 ) -> str:
     """Send an image + prompt to Haiku 4.5 and return the text response.

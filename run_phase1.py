@@ -91,8 +91,8 @@ def main():
                         help="Number of concurrent API calls (default: 10)")
     parser.add_argument("--thinking", action="store_true",
                         help="Enable extended thinking (step-by-step reasoning)")
-    parser.add_argument("--thinking-budget", type=int, default=4096,
-                        help="Max tokens for thinking phase (default: 4096)")
+    parser.add_argument("--thinking-budget", type=int, default=2048,
+                        help="Max tokens for thinking phase (default: 2048)")
     args = parser.parse_args()
 
     tasks = args.tasks or list(TASK_REGISTRY.keys())

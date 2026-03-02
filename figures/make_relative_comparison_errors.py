@@ -10,9 +10,9 @@ cases = [
     },
     {
         "image": "generate/images/touching_circles/touch_d0.1_r0.1_ahorizontal_s512_0.png",
-        "gt": "Not touching (10px gap)",
+        "gt": "Not touching (dist=0.10)",
         "model": "Yes, touching",
-        "caption": "r=0.10: always-touching bias up to 10px",
+        "caption": "dist\u22640.10: always-touching bias at small distance ratios",
     },
     {
         "image": "generate/images/pie_charts/pie_value_n3_3.png",

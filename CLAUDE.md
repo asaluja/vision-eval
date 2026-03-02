@@ -23,7 +23,7 @@ python run_phase1.py --eval-only --tasks counting_circles --workers 10
 ANTHROPIC_API_KEY=... python run_phase1.py --n 3 --workers 10
 
 # With extended thinking
-python run_phase1.py --eval-only --tasks counting_pentagons --thinking --thinking-budget 8000
+python run_phase1.py --eval-only --tasks counting_pentagons --thinking --thinking-budget 2048
 
 # HF benchmark evaluation
 python run_benchmarks.py --dataset blind --tasks path_following line_intersection --workers 10

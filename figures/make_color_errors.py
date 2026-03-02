@@ -6,7 +6,7 @@ cases = [
         "image": "generate/images/color_discrimination/color_grid_4_blues_extreme_0.png",
         "gt": "A1 (odd cell)",
         "model": "C1",
-        "caption": "Blues at \u0394L\u22485: shade invisible",
+        "caption": "Blues (extreme difficulty): shade invisible",
     },
     {
         "image": "generate/images/color_discrimination/color_bar_4_hard_blues_4.png",

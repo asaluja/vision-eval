@@ -106,7 +106,7 @@ Perfect for 1–3 paths. Sharp degradation at 4+ where paths overlap visually.
 
 The false positive rate increases monotonically with polyline complexity. At 5-point lines, the model *always* reports intersections even when there are none — it appears to interpret visual proximity of line segments as crossing.
 
-**Synthetic vs HF gap for 3-point**: Our synthetic (85.0%) outperforms HF (64.6%) because HF has 1,200 gt=0 instances (vs our 20), and gt=0 is the hardest case. The HF's larger gt=0 sample reveals a stronger false-positive bias than our smaller sample captures.
+**Synthetic vs HF gap for 3-point**: Our synthetic 3-point lines (90.0%, n=30) outperform HF (64.6%, n=3600). Two factors explain the gap: (1) **Sample size asymmetry at gt=0**: HF has 1,200 gt=0 instances vs our 10, and gt=0 is the hardest case (36.5% HF vs 80% gen). Our small sample likely overestimates performance at gt=0. (2) **Line complexity**: HF's "Line Plot Intersections" use multi-segment line plots with varying distances, resolutions (100-300 DPI), and linewidths (2-4), while our synthetic uses clean 2-segment polylines at fixed linewidth=3 on 512px canvas. More segments create more near-miss regions where the model hallucinates crossings.
 
 ---
 

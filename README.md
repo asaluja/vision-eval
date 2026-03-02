@@ -41,7 +41,7 @@ python run_phase1.py --eval-only --tasks counting_circles --workers 10
 python run_phase1.py --n 3 --workers 10
 
 # With extended thinking
-python run_phase1.py --eval-only --tasks counting_pentagons --thinking --thinking-budget 8000
+python run_phase1.py --eval-only --tasks counting_pentagons --thinking --thinking-budget 2048
 ```
 
 ### HuggingFace Benchmarks
@@ -127,12 +127,10 @@ vision-eval/
 │   ├── check_circled_letter.py# Off-by-one error analysis
 │   └── check_diag.py          # Diagram/pie chart diagnostics
 │
-├── summaries/                 # Per-primitive markdown evaluation summaries
+├── summaries/                 # Per-primitive markdown evaluation summaries + finetuning plan
 ├── figures/                   # Generated plots, error composites, and figure scripts
 ├── results/                   # JSONL instance metadata and evaluation results
-├── docs/
-│   └── task_inventory.md      # Master inventory of all 57 task entries
-├── EXTENSIONS.md              # Known issues, extensions, thinking experiments
+├── task_inventory.md          # Master inventory of all task entries with primitive mappings
 └── anthropic_takehome_context.md  # Full research context and literature review
 ```
 
@@ -222,11 +220,11 @@ Each task generates **two prompt variants** (A and B) per image for robustness t
 
 The report proposes a three-stage training pipeline:
 
-1. **SFT (~330K examples)**: Break OCR dependency by training on charts without/with deliberately wrong labels, using chain-of-thought visual grounding ("The gridlines are at 0, 20, 40. The bar extends just above 80...").
+1. **SFT (~120K examples)**: Break OCR dependency by training on charts without/with deliberately wrong labels, using chain-of-thought visual grounding. Data mix: 35K chart tasks, 2.5K color grids, 2.7K heatmaps, 2K grids, plus 15K solved-task regularization, all doubled via CoT augmentation.
 
-2. **DPO (~40K pairs)**: Target the 0% value-label conflict directly — every instance produces a clean preference pair (chosen: visual estimation; rejected: model's text-reading output). Additional pairs from proximity thresholds, color discrimination edges, and path overcounts.
+2. **DPO (~12K pairs)**: ~1,725 natural preference pairs from eval failures, augmented ~7× via parameter sweeps. Primary target: 0% value-label conflict (every instance produces a clean pair). Additional pairs from proximity thresholds, color discrimination edges, and path overcounts.
 
-3. **RL with verifiable rewards (~225K episodes)**: Push along smooth degradation curves using curricula that start where the model succeeds and advance into failure regimes. All tasks have exactly computable ground truth.
+3. **RL with verifiable rewards (~93K episodes)**: 11 task families with difficulty curricula (~200 episodes per step, ×2 for reward variants). All tasks have exactly computable ground truth.
 
 See `summaries/finetuning_plan_summary.md` for the full plan with sample training data.
 
@@ -236,9 +234,8 @@ If you're picking up this repo, start here:
 
 1. **`anthropic_takehome_context.md`** — Full research context, literature review, and assignment spec
 2. **`summaries/`** — Read any primitive summary to understand the evaluation methodology and findings
-3. **`docs/task_inventory.md`** — Master inventory of all 57 task entries with primitive mappings
-4. **`EXTENSIONS.md`** — Known issues (patterned grid bug), the image-pair paradigm, and thinking experiment results
-5. **`CLAUDE.md`** — Detailed developer instructions for Claude Code, including conventions and the task registry
+3. **`task_inventory.md`** — Master inventory of all task entries with primitive mappings
+4. **`CLAUDE.md`** — Detailed developer instructions for Claude Code, including conventions and the task registry
 
 ## Dependencies
 
@@ -257,3 +254,30 @@ If you're picking up this repo, start here:
 - **macOS**: `config.py` sets `matplotlib.use("Agg")` before any pyplot import (required for headless rendering). Always `import config` before importing pyplot.
 - **Python 3.9**: Uses `from __future__ import annotations` for `X | Y` union syntax.
 - **Model**: All evaluation targets `claude-haiku-4-5-20251001` (set in `config.py`).
+
+## Future Work: Synthetic Image Pairs
+
+All current evaluation tasks use **single images**. Image pairs are a fundamentally different evaluation paradigm: show two nearly identical images and ask the model to identify or reason about the difference. This directly generates contrastive finetuning data — every pair where the model fails becomes a training example.
+
+**Implemented**: Chart data match (`generate/chart_comparison.py`) — same data rendered as different chart types, ask if values match.
+
+**Proposed pair types** (not yet implemented):
+1. **Relative comparison in charts** (highest priority) — two bar charts identical except one bar is slightly taller/shorter
+2. **Text/number changes in documents** — same form but a dollar amount differs ($1,234 vs $1,284)
+3. **Count changes in charts/diagrams** — same layout, 5 bars vs 6 bars
+4. **Spatial localization** — same table, highlighted cell at (2,3) vs (2,4)
+5. **Color discrimination** — same chart but legend color mapping is swapped
+6. **Line/path following** — same flowchart but "Yes" branch goes left vs right
+7. **Prior/bias override** — standard 8×8 chessboard vs 9×8 chessboard
+
+CLIP/DINOv2 embedding scores can validate that pairs are "CLIP traps" (high CLIP similarity, low DINOv2 similarity).
+
+## Known Issues
+
+### Patterned Grid: Generator Bug (Fixed, Needs Re-evaluation)
+
+The `generate/patterned_grids.py` generator had a ground-truth bug: `actual_count` was set to `count` after the cell-drawing loop, but `count` is reassigned on every iteration, so it held the value from the last cell drawn (always 1) rather than the anomaly cell's actual count. All patterned grid results have incorrect ground truth. The task is excluded from summaries and figures pending re-evaluation.
+
+### Extended Thinking Experiments
+
+Extended thinking (`--thinking --thinking-budget 2048`) only helps annotation conflicts (+15pp, 75%→90%). All other tasks are unchanged — value labels (0%→0%), board games (-0.5pp), pie charts (+1.7pp), heatmap (+0.4pp). Increasing budget beyond 2048 does not help. These are perceptual limits, not reasoning bottlenecks.

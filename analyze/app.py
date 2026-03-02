@@ -18,9 +18,30 @@ RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
 
 @st.cache_data(ttl=60)
 def load_results() -> pd.DataFrame:
-    """Load all *_results.jsonl files into a single DataFrame."""
+    """Load all *_results.jsonl files into a single DataFrame.
+
+    When both v1 and v2 result files exist for the same task (e.g.
+    grid_counting_results.jsonl and grid_counting_v2_results.jsonl),
+    only the v2 file is loaded to avoid double-counting.
+    """
+    all_paths = sorted(glob.glob(os.path.join(RESULTS_DIR, "*_results.jsonl")))
+    # Build set of task bases that have a v2 file
+    v2_bases = set()
+    for path in all_paths:
+        fname = os.path.basename(path)
+        if "_v2_results.jsonl" in fname:
+            v2_bases.add(fname.replace("_v2_results.jsonl", ""))
+    # Skip v1 files when v2 exists
+    paths = []
+    for path in all_paths:
+        fname = os.path.basename(path)
+        if "_v2_results.jsonl" not in fname:
+            base = fname.replace("_results.jsonl", "")
+            if base in v2_bases:
+                continue  # v2 exists, skip v1
+        paths.append(path)
     rows = []
-    for path in sorted(glob.glob(os.path.join(RESULTS_DIR, "*_results.jsonl"))):
+    for path in paths:
         with open(path) as f:
             for line in f:
                 try:
@@ -115,6 +136,17 @@ def main():
     selected_task = st.sidebar.selectbox("Task type", task_types)
 
     filtered = filtered if selected_task == "All" else filtered[filtered["task_type"] == selected_task]
+
+    # Path following: toggle distractor vs simple path counting
+    if selected_task == "path_following":
+        path_mode = st.sidebar.radio(
+            "Path mode",
+            ["All", "Distractor only", "Simple (n_paths) only"],
+        )
+        if path_mode == "Distractor only":
+            filtered = filtered[filtered["subtask"].str.startswith("distractor")]
+        elif path_mode == "Simple (n_paths) only":
+            filtered = filtered[filtered["subtask"].str.startswith("n_paths")]
 
     subtasks = ["All"] + sorted(filtered["subtask"].dropna().unique().tolist())
     selected_subtask = st.sidebar.selectbox("Subtask", subtasks)

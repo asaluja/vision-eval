@@ -67,7 +67,7 @@ Example: Bar visually at height 52, labeled "36". Prompt: "Based on the bar heig
 | 5 | 0% | 100% |
 | 6 | 0% | 100% |
 
-No variation by number of categories — the failure is absolute. **Extended thinking: still 0%** — thinking cannot override OCR-level text reliance.
+No variation by number of categories — the failure is absolute. **Extended thinking (budget=2048): still 0%** — thinking cannot override OCR-level text reliance. Larger thinking budgets do not help.
 
 #### Annotation Conflict (`conflict_annotation`, Local)
 
@@ -82,7 +82,7 @@ A red "Highest" arrow and label points to a non-max bar. The model is fooled 25%
 
 When the true max is clearly taller (gap >= 20), the model usually resists the annotation (88.5% accuracy). When bars are similar in height (gap < 15), the annotation tips the model toward the wrong answer (25% accuracy).
 
-**Extended thinking: 90%** (+15pp). Thinking gives the model space to reason past the misleading annotation — the largest improvement of any thinking experiment in this eval. The remaining 10% errors likely occur at very small gaps where the visual evidence is genuinely ambiguous.
+**Extended thinking (budget=2048): 90%** (+15pp). Thinking gives the model space to reason past the misleading annotation — the largest improvement of any thinking experiment in this eval. The remaining 10% errors likely occur at very small gaps where the visual evidence is genuinely ambiguous. Larger thinking budgets do not improve further.
 
 ## Cross-Task Patterns
 

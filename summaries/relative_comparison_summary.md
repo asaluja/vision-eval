@@ -120,7 +120,7 @@ Errors correlate with the gap between the largest and second-largest slice. Most
 
 This is notably harder than bar comparison, where diff≥2 is 100%. Angular estimation (pie wedges) is perceptually harder than height estimation (bars) for the same proportional difference — consistent with psychophysics research showing humans are also worse at angle vs. length judgments.
 
-**Extended thinking: 75.0%** (+1.7pp) — no meaningful improvement. Thinking does not help angular estimation; this is a perceptual limitation, not a reasoning one.
+**Extended thinking (budget=2048): 75.0%** (+1.7pp) — no meaningful improvement. Thinking does not help angular estimation; this is a perceptual limitation, not a reasoning one. Larger thinking budgets do not help.
 
 #### Cross-Representation Data Matching (`chart_data_match`)
 

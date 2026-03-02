@@ -47,7 +47,7 @@ def _load_completed(results_path: str) -> set[str]:
     return done
 
 
-def _make_eval_fn(thinking: bool = False, thinking_budget: int = 4096):
+def _make_eval_fn(thinking: bool = False, thinking_budget: int = 2048):
     """Return an eval function with thinking config baked in (for thread pool)."""
     def _eval_one(inst: TaskInstance) -> dict:
         try:
@@ -78,7 +78,7 @@ def run_evaluation(
     results_path: str,
     max_workers: int = 10,
     thinking: bool = False,
-    thinking_budget: int = 4096,
+    thinking_budget: int = 2048,
 ) -> list[dict]:
     """Evaluate a list of TaskInstances against Haiku 4.5.
 

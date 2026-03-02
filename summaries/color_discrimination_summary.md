@@ -155,7 +155,7 @@ Modest degradation with grid density — MAE increases ~16% from 4×4 to 6×6.
 
 Viridis (perceptually uniform, sequential) has substantially lower MAE than RdBu (diverging) or YlOrRd (sequential but non-uniform). This is consistent with viridis being designed for accurate value reading.
 
-**Extended thinking: 56.3%** (+0.4pp) — no improvement. Thinking cannot improve color-to-value interpolation; this is a perceptual precision limitation, not a reasoning one.
+**Extended thinking (budget=2048): 56.3%** (+0.4pp) — no improvement. Thinking cannot improve color-to-value interpolation; this is a perceptual precision limitation, not a reasoning one. Larger thinking budgets do not help.
 
 ## Cross-Task Patterns
 
